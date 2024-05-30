@@ -7,10 +7,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
-#include <unordered_map> 
-
-
-//g++ viz_csv.cpp -o viz_csv -lglfw -lGLEW -lGL -lGLU
+#include <unordered_map>
 
 struct Node {
     std::string type;
@@ -23,6 +20,12 @@ struct Node {
     float dir_y;
     float dir_z;
     float distance;
+    float pos_x;
+    float pos_y;
+    float pos_z;
+    float dir_vec_x;
+    float dir_vec_y;
+    float dir_vec_z;
 };
 
 // Function to read the CSV file
@@ -65,6 +68,7 @@ float rotationX = 0.0f;
 float rotationY = 0.0f;
 float zoom = 1.0f;
 float posX = 0.0f;
+float posY = 0.0f;
 float posZ = 0.0f;
 bool dragging = false;
 double lastMouseX = 0.0, lastMouseY = 0.0;
@@ -115,6 +119,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 
             // Update the position of the cylinder
             posX -= movX;
+            posY += movY;
             posZ += movY; // Invert y-axis for consistency with other controls
         } else {
             // Rotational movement
@@ -202,12 +207,16 @@ void drawGroundPlane() {
 
 void drawCylinder(float length, float radius) {
     GLUquadric* quad = gluNewQuadric();
-    
+
     // Set the color to brown
-    glColor3f(0.4f, 0.2f, 0.2f);
+    glColor3f(0.4f, 0.1f, 0.1f);
 
     // Draw the cylinder
     gluCylinder(quad, radius, radius, length, 32, 32);
+
+    // Set the color to brown
+    glColor3f(0.7f, 0.35f, 0.2f);
+
 
     // Draw the top circle
     glTranslatef(0.0f, 0.0f, length);
@@ -252,42 +261,82 @@ void drawCylinder(float length, float radius) {
     glEnd();
 }
 
+void calculateNodePositions(std::vector<Node>& nodes) {
+    std::unordered_map<int, Node*> nodeMap;
+    for (auto& node : nodes) {
+        nodeMap[node.id] = &node;
+    }
+
+
+    for (auto& node : nodes) {
+        if (node.parent_id == -1) {
+            // Root node
+            node.pos_x = 0.0f;
+            node.pos_y = 0.0f;
+            node.pos_z = 0.0f;
+            node.dir_vec_x = node.dir_x;
+            node.dir_vec_y = node.dir_y;
+            node.dir_vec_z = node.dir_z;
+        } else {
+            // Child node
+            if (nodeMap.find(node.parent_id) == nodeMap.end()) {
+                // If parent_id is not found in nodeMap
+                std::cout << "Parent not found for node " << node.id << std::endl;
+                continue;
+            }
+
+            Node* parent = nodeMap[node.parent_id];
+            float parent_length = sqrt(parent->dir_vec_x * parent->dir_vec_x +
+                                       parent->dir_vec_y * parent->dir_vec_y +
+                                       parent->dir_vec_z * parent->dir_vec_z);
+            float parent_dir_x = parent->dir_vec_x / parent_length;
+            float parent_dir_y = parent->dir_vec_y / parent_length;
+            float parent_dir_z = parent->dir_vec_z / parent_length;
+            if (parent->length < node.distance) {
+                node.distance = parent->length;
+                std::cout << "Child is too far from parent!" << std::endl;
+            }
+            node.pos_x = parent->pos_x + parent_dir_x * node.distance;
+            node.pos_y = parent->pos_y + parent_dir_y * node.distance;
+            node.pos_z = parent->pos_z + parent_dir_z * node.distance;
+            node.dir_vec_x = node.dir_x;
+            node.dir_vec_y = node.dir_y;
+            node.dir_vec_z = node.dir_z;
+        }
+    }
+}
+
 void drawTree(const std::vector<Node>& nodes) {
-    std::unordered_map<int, std::pair<float, float>> positions;
-    positions[0] = {0.0f, 0.0f};
+    std::unordered_map<int, Node> nodeMap;
+    for (const auto& node : nodes) {
+        nodeMap[node.id] = node;
+    }
 
     for (const auto& node : nodes) {
-        if (node.parent_id == -1) continue;
+        if (node.parent_id != -1 && nodeMap.find(node.parent_id) == nodeMap.end()) {
+            // Skip drawing if parent is not found
+            continue;
+        }
 
-        // Get the parent's position
-        auto parent_pos = positions[node.parent_id];
-
-        // Calculate the direction vector
-        float length = sqrt(node.dir_x * node.dir_x + node.dir_y * node.dir_y + node.dir_z * node.dir_z);
-        float dir_x = node.dir_x / length;
-        float dir_y = node.dir_y / length;
-        float dir_z = node.dir_z / length;
+        // Move to the node's position
+        glPushMatrix();
+        glTranslatef(node.pos_x, node.pos_y, node.pos_z);
 
         // Calculate the rotation angle and axis
+        float length = sqrt(node.dir_vec_x * node.dir_vec_x + node.dir_vec_y * node.dir_vec_y + node.dir_vec_z * node.dir_vec_z);
+        float dir_x = node.dir_vec_x / length;
+        float dir_y = node.dir_vec_y / length;
+        float dir_z = node.dir_vec_z / length;
         float angle = acos(dir_z) * 180.0 / M_PI;
         float axis_x = -dir_y;
         float axis_y = dir_x;
         float axis_z = 0.0f;
-
-        // Move to the parent's position
-        glPushMatrix();
-        glTranslatef(parent_pos.first, 0.0f, parent_pos.second);
 
         // Rotate to the direction
         glRotatef(angle, axis_x, axis_y, axis_z);
 
         // Draw the cylinder
         drawCylinder(node.length, node.radius);
-
-        // Calculate the new position
-        float new_x = parent_pos.first + node.dir_x * node.distance;
-        float new_z = parent_pos.second + node.dir_z * node.distance;
-        positions[node.id] = {new_x, new_z};
 
         // Move back to the origin
         glPopMatrix();
@@ -312,6 +361,7 @@ int main() {
     }
 
     nodes = readCSV("sample.csv");
+    calculateNodePositions(nodes);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
@@ -337,7 +387,24 @@ int main() {
         // Set up camera
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
-        gluLookAt(3.0 * zoom + posX, 3.0 * zoom, 3.0 * zoom + posZ, posX, 0.0, posZ, 0.0, 1.0, 0.0);
+
+        //For 3 seconds provides round view
+        double time = glfwGetTime();
+        float eyeX = 0.0f;
+        float eyeY = 0.0f;
+        float eyeZ = 0.0f;
+
+        if (time < 3.0) {
+            eyeX = 5 * cos(2 * time * M_PI / 3.0); // Calculate eye X position
+            eyeY = 10.0f * zoom; // Eye Y position remains unchanged
+            eyeZ = 5 * sin(2 * time * M_PI / 3.0); // Calculate eye Z position
+            gluLookAt(posX+eyeX, eyeY, posZ+eyeZ, posX, 0.0, posZ, 0.0, 1.0, 0.0);
+        }
+
+        //After 3 sec GUI 
+        if(time>3.0){
+        gluLookAt(3.0 * zoom + posX + 2, 6.0 * zoom, 3.0 * zoom + posZ +5, posX, 3.0, posZ, 0.0, 1.0, 0.0);
+        }
 
         // Apply rotations
         glRotatef(rotationX, 1.0f, 0.0f, 0.0f);
