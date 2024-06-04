@@ -1,0 +1,8 @@
+#type,id,posx,posy,posz,dirx,diry,dirz,len,width,;followed by adj-matrix(CSR compressed). ID is serial number through branchs and leaves.
+b,0,0,0,0,0,1,0,4,0.5
+b,1,0,1,0,1,1,1,2,0.01
+b,4,0,1.2,0,-1,1,1,3,0.2
+b,3,0,1.5,0,2,1,1,2,0.2
+1,1,1
+1,2,3
+0,2,2,3,3

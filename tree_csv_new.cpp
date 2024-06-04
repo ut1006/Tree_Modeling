@@ -9,58 +9,120 @@
 #include <string>
 #include <unordered_map>
 
+// Structure to hold the node information
 struct Node {
     std::string type;
     int id;
-    std::string parent_type;
-    int parent_id;
-    float length;
-    float radius;
-    float dir_x;
-    float dir_y;
-    float dir_z;
-    float distance;
-    float pos_x;
-    float pos_y;
-    float pos_z;
-    float dir_vec_x;
-    float dir_vec_y;
-    float dir_vec_z;
+    float posx=0, posy=0, posz=0;
+    float dirx=0, diry=0, dirz=0;
+    float length=0, width=0;
+};
+
+struct CSR {
+    std::vector<int> values;
+    std::vector<int> col_indices;
+    std::vector<int> row_pointers;
 };
 
 // Function to read the CSV file
-std::vector<Node> readCSV(const std::string& filename) {
-    std::vector<Node> nodes;
+void readCSV(const std::string& filename, std::vector<Node>& nodes, CSR& csr) {
     std::ifstream file(filename);
-    std::string line, word;
-
-    std::getline(file, line); // Skip the header
-
+    std::string line;
+    
+    // Skip the header
+    std::getline(file, line); 
+    
+    // Read node data
     while (std::getline(file, line)) {
+        if (line[0] == 'b' || line[0] == 'l') {
+            std::stringstream ss(line);
+            Node node;
+            char type;
+            ss >> type;
+            ss.ignore(1);
+            ss>> node.id;
+            ss.ignore(1);
+            ss >> node.posx;
+            ss.ignore(1);
+            ss >> node.posy;
+            ss.ignore(1);
+            ss >> node.posz;
+            ss.ignore(1);
+            ss >> node.dirx;
+            ss.ignore(1);
+            ss >> node.diry;
+            ss.ignore(1);
+            ss >> node.dirz;
+            ss.ignore(1);
+            ss >> node.length;
+            ss.ignore(1);
+            ss >> node.width;
+            node.type = type;
+            nodes.push_back(node);
+        } else {
+            break;
+        }
+    }
+    
+    // Read CSR values
+    {
         std::stringstream ss(line);
-        Node node;
-        std::getline(ss, node.type, ',');
-        ss >> node.id;
-        ss.ignore(1);
-        std::getline(ss, node.parent_type, ',');
-        ss >> node.parent_id;
-        ss.ignore(1);
-        ss >> node.length;
-        ss.ignore(1);
-        ss >> node.radius;
-        ss.ignore(1);
-        ss >> node.dir_x;
-        ss.ignore(1);
-        ss >> node.dir_y;
-        ss.ignore(1);
-        ss >> node.dir_z;
-        ss.ignore(1);
-        ss >> node.distance;
+        std::string temp;
+        int value;
+        while (ss >> value) {
+            csr.values.push_back(value);
+            if (ss.peek() == ',') ss.ignore();
+        }
+    }
+    
+    // Read CSR col_indices
+    if (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string temp;
+        int value;
+        while (ss >> value) {
+            csr.col_indices.push_back(value);
+            if (ss.peek() == ',') ss.ignore();
+        }
+    }
+    
+    // Read CSR row_pointers
+    if (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::string temp;
+        int value;
+        while (ss >> value) {
+            csr.row_pointers.push_back(value);
+            if (ss.peek() == ',') ss.ignore();
+        }
+    }
+}
 
-        nodes.push_back(node);
+
+void displayData(const std::vector<Node>& nodes, const CSR& csr) {
+    std::cout << "Nodes:" << std::endl;
+    for (const auto& node : nodes) {
+        std::cout << node.type << ", " << node.id << ", " << node.posx << ", " << node.posy << ", " << node.posz << ", "
+                  << node.dirx << ", " << node.diry << ", " << node.dirz << ", " << node.length << ", " << node.width << std::endl;
     }
 
-    return nodes;
+    std::cout << "CSR values:" << std::endl;
+    for (const auto& value : csr.values) {
+        std::cout << value << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "CSR col_indices:" << std::endl;
+    for (const auto& col_index : csr.col_indices) {
+        std::cout << col_index << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "CSR row_pointers:" << std::endl;
+    for (const auto& row_pointer : csr.row_pointers) {
+        std::cout << row_pointer << " ";
+    }
+    std::cout << std::endl;
 }
 
 // Global variables for OpenGL
@@ -73,6 +135,7 @@ float posZ = 0.0f;
 bool dragging = false;
 double lastMouseX = 0.0, lastMouseY = 0.0;
 std::vector<Node> nodes;
+CSR csr;
 
 // Mouse callback to update rotation angles
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
@@ -262,107 +325,85 @@ void drawCylinder(float length, float radius) {
     glEnd();
 }
 
-void calculateNodePositions(std::vector<Node>& nodes) {
-    std::unordered_map<int, Node*> nodeMap;
-    for (auto& node : nodes) {
-        nodeMap[node.id] = &node;
+void drawBranch(const Node& node) {
+    glPushMatrix();
+   
+    // Apply translation and rotation based on the node's position and direction
+    glTranslatef(node.posx, node.posy, node.posz);
+    float angleX = -atan2(node.diry, node.dirz) * 180.0 / M_PI;
+    float angleY = atan2(node.dirx, node.dirz) * 180.0 / M_PI;
+    glRotatef(angleX, 1.0f, 0.0f, 0.0f);
+    glRotatef(angleY, 0.0f, 1.0f, 0.0f);
+
+    drawCylinder(node.length, node.width);
+    glPopMatrix();
+}
+
+
+void drawTree(const std::vector<Node>& nodes, const CSR& csr) {
+    std::unordered_map<int, std::vector<int>> parentToChildren;
+
+    // 親ノードに対してその子ノードのIDをマッピング
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        for (int j = csr.row_pointers[i]; j < csr.row_pointers[i + 1]; ++j) {
+            int childIndex = csr.col_indices[j];
+            if (childIndex >= 0 && childIndex < nodes.size()) {
+                parentToChildren[nodes[i].id].push_back(childIndex);
+            }
+        }
     }
 
-
-    for (auto& node : nodes) {
-        if (node.parent_id == -1) {
-            // Root node
-            node.pos_x = 0.0f;
-            node.pos_y = 0.0f;
-            node.pos_z = 0.0f;
-            node.dir_vec_x = node.dir_x;
-            node.dir_vec_y = node.dir_y;
-            node.dir_vec_z = node.dir_z;
-        } else {
-            // Child node
-            if (nodeMap.find(node.parent_id) == nodeMap.end()) {
-                // If parent_id is not found in nodeMap
-                std::cout << "Parent not found for node " << node.id << std::endl;
-                continue;
+    // ノードを描画し、その子ノードも描画
+    for (const auto& node : nodes) {
+        drawBranch(node);
+        if (parentToChildren.find(node.id) != parentToChildren.end()) {
+            for (const int childIndex : parentToChildren[node.id]) {
+                drawBranch(nodes[childIndex]);
             }
-
-            Node* parent = nodeMap[node.parent_id];
-            float parent_length = sqrt(parent->dir_vec_x * parent->dir_vec_x +
-                                       parent->dir_vec_y * parent->dir_vec_y +
-                                       parent->dir_vec_z * parent->dir_vec_z);
-            float parent_dir_x = parent->dir_vec_x / parent_length;
-            float parent_dir_y = parent->dir_vec_y / parent_length;
-            float parent_dir_z = parent->dir_vec_z / parent_length;
-            if (parent->length < node.distance) {
-                node.distance = parent->length;
-                std::cout << "Child is too far from parent!" << std::endl;
-            }
-            node.pos_x = parent->pos_x + parent_dir_x * node.distance;
-            node.pos_y = parent->pos_y + parent_dir_y * node.distance;
-            node.pos_z = parent->pos_z + parent_dir_z * node.distance;
-            node.dir_vec_x = node.dir_x;
-            node.dir_vec_y = node.dir_y;
-            node.dir_vec_z = node.dir_z;
         }
     }
 }
-
-void drawTree(const std::vector<Node>& nodes) {
-    std::unordered_map<int, Node> nodeMap;
-    for (const auto& node : nodes) {
-        nodeMap[node.id] = node;
-    }
-
-    for (const auto& node : nodes) {
-        if (node.parent_id != -1 && nodeMap.find(node.parent_id) == nodeMap.end()) {
-            // Skip drawing if parent is not found
-            continue;
-        }
-
-        // Move to the node's position
-        glPushMatrix();
-        glTranslatef(node.pos_x, node.pos_y, node.pos_z);
-
-        // Calculate the rotation angle and axis
-        float length = sqrt(node.dir_vec_x * node.dir_vec_x + node.dir_vec_y * node.dir_vec_y + node.dir_vec_z * node.dir_vec_z);
-        float dir_x = node.dir_vec_x / length;
-        float dir_y = node.dir_vec_y / length;
-        float dir_z = node.dir_vec_z / length;
-        float angle = acos(dir_z) * 180.0 / M_PI;
-        float axis_x = -dir_y;
-        float axis_y = dir_x;
-        float axis_z = 0.0f;
-
-        // Rotate to the direction
-        glRotatef(angle, axis_x, axis_y, axis_z);
-
-        // Draw the cylinder
-        drawCylinder(node.length, node.radius);
-
-        // Move back to the origin
-        glPopMatrix();
-    }
-}
-
 int main() {
+    // Load the tree data
+    readCSV("new_tree_info.csv", nodes, csr);
+
+    // Display loaded data for debugging
+    displayData(nodes, csr);
+
+    // Initialize GLFW
     if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW\n";
         return -1;
     }
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "3D Tree Model", NULL, NULL);
+    // Create a GLFW window
+    GLFWwindow* window = glfwCreateWindow(800, 600, "Tree Visualization", NULL, NULL);
     if (!window) {
+        std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
         return -1;
     }
 
+    // Make the window's context current
     glfwMakeContextCurrent(window);
+
+    // Initialize GLEW
     if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW" << std::endl;
+        std::cerr << "Failed to initialize GLEW\n";
         return -1;
     }
 
-    nodes = readCSV("sample.csv");
-    calculateNodePositions(nodes);
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+
+    // Set callback functions
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
+
+    // Load the tree data
+    readCSV("new_tree_info.csv", nodes, csr);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
@@ -417,13 +458,19 @@ int main() {
         // Draw the ground plane
         drawGroundPlane();
 
-        // Draw the tree model
-        drawTree(nodes);
 
+
+        // Draw the tree
+        drawTree(nodes, csr);
+
+        
+
+        // Swap buffers
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
+    // Cleanup and exit
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
