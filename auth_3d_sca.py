@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import random
 from mpl_toolkits.mplot3d import Axes3D
+import csv
 
 class Tree_node:
     def __init__(self, pos_x, pos_y, pos_z):
@@ -34,7 +34,7 @@ class Tree:
             raise ValueError
 
         if parent in self.nodes:
-            self.transition_map[child] = parent  # childをkeyとしてparentを登録
+            self.transition_map[child] = parent
             self.nodes.append(child)
         else:
             raise ValueError
@@ -80,25 +80,21 @@ class Simulation:
         self.D = D
         self.iter_num = 0
 
-        # list of attraction points
         x, y, z = crown_attraction_points
 
         attraction_pts = []
         for i, j, k in list(zip(x, y, z)):
-            attraction_pts.append(Attraction_point(i, j, k))  # 点ごとに(x,y,z)の組にして追加
+            attraction_pts.append(Attraction_point(i, j, k))
 
-        # nodes
         self.nodes = []
-        root = Tree_node(0.5, 0, 0)  # rootの位置
+        root = Tree_node(0, 2, 0)
         self.nodes.append(root)
 
-        # closest node to each attraction pt
         self.closest_node = {attr_pt: None for attr_pt in attraction_pts}
-        self.closest_dist = {attr_pt: np.inf for attr_pt in attraction_pts}  # distanceのリスト。無限大でinit
+        self.closest_dist = {attr_pt: np.inf for attr_pt in attraction_pts}
 
         self._update_closest_node(self.nodes[0])
 
-        # branches
         self.branches = []
         self.branching_tree = Tree(root)
         self.brach_min_width = brach_min_width
@@ -107,13 +103,11 @@ class Simulation:
     def _update_closest_node(self, node):
         kill_candidates = []
 
-        # internal method to update self.closest_node and self.closest_dist
         for attr_pt in self.closest_node:
             old_smallest = self.closest_dist[attr_pt]
             dist = np.linalg.norm(attr_pt.pos - node.pos)
 
             if dist < self.d_k:
-                # attr_pt to be killed
                 kill_candidates.append(attr_pt)
                 continue
 
@@ -121,7 +115,6 @@ class Simulation:
                 self.closest_node[attr_pt] = node
                 self.closest_dist[attr_pt] = dist
 
-        # kill attraction points with nodes too close to them
         for attr_pt in kill_candidates:
             del self.closest_node[attr_pt]
             del self.closest_dist[attr_pt]
@@ -169,12 +162,45 @@ class Simulation:
 
         w = 0
         for child in self.branching_tree.get_children(node):
-            w += np.power(self.branch_thickness(child),4)
-        w = np.power(w,1/4)#default is w+=np.square and power(1/2)
+            w += np.power(self.branch_thickness(child), 4)
+        w = np.power(w, 1/4)
 
         self.branch_width[node] = w
         return w
 
+    def print_branches(self):
+        print("Branches (Start and End coordinates with thickness):")
+        for branch in self.branches:
+            start, end, node = branch
+            lw = self.branch_thickness(node)
+            print(f'Start: {start}, End: {end}, Thickness: {lw}')
+
+    def print_transition_map(self):
+        print("Transition Map (Parent-Child Relationships):")
+        for child, parent in self.branching_tree.transition_map.items():
+            print(f'Parent: {parent.pos}, Child: {child.pos}')
+
+    def print_transition_map_with_thickness(self):
+        print("Transition Map with Thickness (Parent-Child Relationships with Branch Thickness):")
+        for child, parent in self.branching_tree.transition_map.items():
+            thickness = self.branch_thickness(child)
+            print(f'Parent: {parent.pos}, Child: {child.pos}, Thickness: {thickness}')
+
+
+    def save_transition_map_with_thickness_to_csv(self, filename='transition_map_with_thickness.csv'):
+        with open(filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Parent_x', 'Parent_y', 'Parent_z', 'Child_x', 'Child_y', 'Child_z', 'Thickness'])
+
+            for child, parent in self.branching_tree.transition_map.items():
+                thickness = self.branch_thickness(child)
+                writer.writerow([
+                    f'{parent.pos[0]:.8f}', f'{parent.pos[1]:.8f}', f'{parent.pos[2]:.8f}', 
+                    f'{child.pos[0]:.8f}', f'{child.pos[1]:.8f}', f'{child.pos[2]:.8f}', 
+                    f'{thickness:.8f}'
+                ])
+
+    # Modify the run method to include these print statements at the end
     def run(self, num_iteration):
         for i in range(num_iteration):
             self._iter()
@@ -182,6 +208,18 @@ class Simulation:
                 break
         self._report()
         self.render_results()
+
+        # Print the required data
+ 
+        self.print_branches()
+        self.print_transition_map()
+                # Print the required data
+        self.print_transition_map_with_thickness()
+
+        # Save the required data to CSV
+        self.save_transition_map_with_thickness_to_csv()
+
+
 
     def render_results(self):
         fig = plt.figure()
@@ -203,33 +241,15 @@ class Simulation:
         plt.show()
         print()
 
-        # 分岐点とその情報の表示
-        for node in self.nodes:
-            if self.branching_tree.num_children(node) > 1:  # 分岐点
-                parent = self.branching_tree.transition_map[node]
-                children = self.branching_tree.get_children(node)
 
-                for child in children:
-                    branch_length = np.linalg.norm(child.pos - node.pos)
-                    print(f'Branch point at {node.pos}, Parent at {parent.pos}, Child at {child.pos}, Branch length: {branch_length}')
-                    print()
-            elif self.branching_tree.is_leaf(node):  # 先端
-                parent = self.branching_tree.transition_map[node]
-                branch_length = np.linalg.norm(node.pos - parent.pos)
-                print(f'Leaf at {node.pos}, Parent at {parent.pos}, Branch length: {branch_length}')
-                print()
-
-    def _iter(self):#ここで成長予測をしてく
+    def _iter(self):
         self.iter_num += 1
 
         meta_nodes = []
-        for node in self.nodes:#もしsetが空だったらスキップ。ただし今はDi=5なので必ずfilled.
-            # find set of attraction pts affecting node
+        for node in self.nodes:
             S_v = {attr_pt for attr_pt in self.closest_node if self.closest_node[attr_pt] == node}
 
-            # if set is not empty, add new node
             if len(S_v) != 0:
-                # find new node pos
                 n = np.array([0, 0, 0], dtype=float)
                 for attr_pt in S_v:
                     n += (attr_pt.pos - node.pos) / np.linalg.norm(attr_pt.pos - node.pos)
@@ -244,48 +264,26 @@ class Simulation:
                 self.branching_tree.add_child(node, new_node)
 
                 meta_nodes.append(new_node)
-        # add newly added nodes
+
         self.nodes.extend(meta_nodes)
 
-        # report iteration results
         if self.iter_num % 10 == 0:
             self._report()
-    
 
-    def find_branching_points(self):
-        branching_points = []
-        for node in self.branching_tree.nodes:
-            if self.branching_tree.num_children(node) > 1:
-                branching_points.append(node)
-        return branching_points
 
-    def display_branching_info(self):
-        branching_points = self.find_branching_points()
-        for node in branching_points:
-            parent = self.branching_tree.transition_map[node]
-            children = self.branching_tree.get_children(node)
-
-            parent_vector = node.pos - parent.pos
-            child_vectors = [child.pos - node.pos for child in children]
-
-            print(f'Branching point: {node.pos}')
-            print(f'  Parent vector: {parent_vector}')
-            for i, vec in enumerate(child_vectors):
-                print(f'  Child {i+1} vector: {vec}')
-            print(f'  Branch thickness: {self.branch_thickness(node)}')
-            print()
 
 def run_experiment_ellipsoid_crown_1():
-    mean = [0.3, 5.5, 0.3]#３次元ガウス分布の平均
-    cov = [[1, 0, 0], [0.6, 2, 0], [0, 0, 1]]#共分散行列
-    #ランダムに点を生成してそのうちCrown内にあるもののみを採用する
-    x, y, z = np.random.multivariate_normal(mean, cov, 1000).T
+    mean = [0.3, 5.5, 0.3]
+    cov = [[1, 0, 0], [0.6, 2, 0], [0, 0, 1]]
+    x, y, z = np.random.multivariate_normal(mean, cov, 100).T
 
     t = np.square(x) + np.square(y - 4) / 4 + np.square(z) <= 1
-    #中心(0,4,0),半径１の球の中にあれば１を返すBoolリスト。
     x_crown = x[t]
     y_crown = y[t]
     z_crown = z[t]
+
+    
+
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -299,7 +297,6 @@ def run_experiment_ellipsoid_crown_1():
 
     sim = Simulation(crown_attraction_points=(x_crown, y_crown, z_crown), radius_of_influence=5, kill_distance=0.1, D=0.1, brach_min_width=1)
     sim.run(50)
-    sim.display_branching_info()
     sim.render_results()
 
     del sim

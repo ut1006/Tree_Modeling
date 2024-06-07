@@ -8,6 +8,8 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <functional> // 追加
+#include <algorithm>  // 追加
 
 // Structure to hold the node information
 struct Node {
@@ -261,10 +263,10 @@ void drawGroundPlane() {
     glBegin(GL_QUADS);
 
     // Draw a large ground plane
-    glVertex3f(-10.0f, -1.0f, -10.0f);
-    glVertex3f(10.0f, -1.0f, -10.0f);
-    glVertex3f(10.0f, -1.0f, 10.0f);
-    glVertex3f(-10.0f, -1.0f, 10.0f);
+    glVertex3f(-50.0f, -1.0f, -50.0f);
+    glVertex3f(50.0f, -1.0f, -50.0f);
+    glVertex3f(50.0f, -1.0f, 50.0f);
+    glVertex3f(-50.0f, -1.0f, 50.0f);
 
     glEnd();
 }
@@ -325,44 +327,110 @@ void drawCylinder(float length, float radius) {
     glEnd();
 }
 
+void drawEllipse(float majorAxis, float minorAxis) {
+    const int numSegments = 36; // Number of segments to approximate ellipse
+    const float angleIncrement = 2.0f * M_PI / numSegments; // Angle increment for each segment
+    glBegin(GL_TRIANGLE_FAN);
+    
+
+    for (int i = 0; i <= numSegments; ++i) {
+        float angle = i * angleIncrement;
+        float x = majorAxis * cos(angle);
+        float y = minorAxis * sin(angle);
+        glVertex3f(x, y, 0.0f); // Draw a vertex at the calculated point
+    }
+    glEnd();
+}
+
+
 void drawBranch(const Node& node) {
     glPushMatrix();
    
     // Apply translation and rotation based on the node's position and direction
     glTranslatef(node.posx, node.posy, node.posz);
-    float angleX = -atan2(node.diry, node.dirz) * 180.0 / M_PI;
-    float angleY = atan2(node.dirx, node.dirz) * 180.0 / M_PI;
-    glRotatef(angleX, 1.0f, 0.0f, 0.0f);
+    // 方向ベクトルに基づく角度計算
+    float angleX = atan2(node.diry, node.dirz) * 180.0 / M_PI;
+    float angleY = atan2(node.dirx, sqrt(node.diry * node.diry + node.dirz * node.dirz)) * 180.0 / M_PI;
+
+    glRotatef(-angleX, 1.0f, 0.0f, 0.0f);
     glRotatef(angleY, 0.0f, 1.0f, 0.0f);
 
-    drawCylinder(node.length, node.width);
+
+    glTranslatef(0, 0, -node.length*0.05);
+    drawCylinder(node.length*1.07, node.width);
+
+    glLoadIdentity();
+    glPopMatrix();
+}
+
+
+void drawLeaf(const Node& node) {
+    glPushMatrix();
+
+    // Calculate leaf orientation based on node direction
+    float angleX = -atan2(node.diry, node.dirz) * 180.0f / M_PI;
+    float angleY = atan2(node.dirx, node.dirz) * 180.0f / M_PI;
+
+    // Apply translation and rotation based on the node's position and direction
+    glTranslatef(node.posx, node.posy, node.posz );
+    glRotatef(-angleX, 1.0f, 0.0f, 0.0f);
+    glRotatef(angleY, 0.0f, 1.0f, 0.0f);
+
+    // Draw stem between leaf and branch
+    drawCylinder(node.length / 3.0f, node.width/10.0f); // Thin cylinder for stem
+
+
+    glRotatef(90, 0.0f, 1.0f, 0.0f);
+    glRotatef(90, 1.0f, 0.0f, 0.0f);
+    glTranslatef(node.length, 0.0f, 0.0f); // Center of the ellipse
+    
+    // Draw leaf as an ellipse at the end of the stem
+    glColor3f(0.1f, 1.0f, 0.1f); // Green color for leaf
+    drawEllipse(node.length, node.width); // Draw an ellipse for leaf
+
     glPopMatrix();
 }
 
 
 void drawTree(const std::vector<Node>& nodes, const CSR& csr) {
-    std::unordered_map<int, std::vector<int>> parentToChildren;
-
-    // 親ノードに対してその子ノードのIDをマッピング
-    for (size_t i = 0; i < nodes.size(); ++i) {
-        for (int j = csr.row_pointers[i]; j < csr.row_pointers[i + 1]; ++j) {
-            int childIndex = csr.col_indices[j];
-            if (childIndex >= 0 && childIndex < nodes.size()) {
-                parentToChildren[nodes[i].id].push_back(childIndex);
-            }
-        }
+    // ノードをIDで検索するためのマップを作成
+    std::unordered_map<int, Node> nodeMap;
+    for (const auto& node : nodes) {
+        nodeMap[node.id] = node;
     }
 
-    // ノードを描画し、その子ノードも描画
+    // 幹（ID=0）は無条件で描画
+    if (nodeMap.find(0) != nodeMap.end()) {
+        drawBranch(nodeMap[0]);
+    }
+
+    // 他のノードをチェックして描画
     for (const auto& node : nodes) {
-        drawBranch(node);
-        if (parentToChildren.find(node.id) != parentToChildren.end()) {
-            for (const int childIndex : parentToChildren[node.id]) {
-                drawBranch(nodes[childIndex]);
+        if (node.id == 0) continue; // 幹はすでに描画済み
+
+        bool parentExists = false;
+        for (size_t row = 0; row < csr.row_pointers.size() - 1; ++row) {
+            for (int col = csr.row_pointers[row]; col < csr.row_pointers[row + 1]; ++col) {
+                if (csr.col_indices[col] == node.id && csr.values[col] == 1) {
+                    parentExists = true;
+                    break;
+                }
+            }
+            if (parentExists) break;
+        }
+
+        if (parentExists) {
+            if (node.type == "b") {
+                drawBranch(node);
+            } else if (node.type == "l") {
+                drawLeaf(node);
             }
         }
+
     }
 }
+
+
 int main() {
     // Load the tree data
     readCSV("new_tree_info.csv", nodes, csr);
@@ -377,7 +445,7 @@ int main() {
     }
 
     // Create a GLFW window
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Tree Visualization", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1600, 1200, "Tree Visualization", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
         glfwTerminate();
