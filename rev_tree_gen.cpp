@@ -7,24 +7,8 @@
 #include <sstream>
 #include <vector>
 #include <string>
-#include <unordered_map>
-#include <functional>
-#include <algorithm>
-
-// Structure to hold the node information
-struct Node {
-    std::string type;
-    int id;
-    float posx=0, posy=0, posz=0;
-    float dirx=0, diry=0, dirz=0;
-    float length=0, width=0;
-};
-
-struct CSR {
-    std::vector<int> values;
-    std::vector<int> col_indices;
-    std::vector<int> row_pointers;
-};
+#include <map>
+#include <tuple>
 
 // Structure to hold the branch information
 struct Branch {
@@ -33,14 +17,38 @@ struct Branch {
     float thickness;
 };
 
+// Function to create a parent-child map
+std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> createParentChildMap(const std::vector<Branch>& branches) {
+    std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> parentChildMap;
+    for (const auto& branch : branches) {
+        std::tuple<float, float, float> parent(branch.parent_x, branch.parent_y, branch.parent_z);
+        std::tuple<float, float, float> child(branch.child_x, branch.child_y, branch.child_z);
+        parentChildMap[child] = parent;
+    }
+    return parentChildMap;
+}
+
+bool canTraceBackToRoot(const std::map<std::tuple<float, float, float>, std::tuple<float, float, float>>& parentChildMap, const std::tuple<float, float, float>& current, const std::tuple<float, float, float>& root) {
+    auto it = current;
+    while (it != root) {
+        auto parentIt = parentChildMap.find(it);
+        if (parentIt == parentChildMap.end()) {
+            return false;
+        }
+        it = parentIt->second;
+    }
+    return true;
+}
+
+
 // Function to read the CSV file
 void readCSV(const std::string& filename, std::vector<Branch>& branches) {
     std::ifstream file(filename);
     std::string line;
-    
+
     // Skip the header
     std::getline(file, line);
-    
+
     // Read branch data
     while (std::getline(file, line)) {
         std::stringstream ss(line);
@@ -50,18 +58,6 @@ void readCSV(const std::string& filename, std::vector<Branch>& branches) {
            >> branch.child_x >> comma >> branch.child_y >> comma >> branch.child_z >> comma
            >> branch.thickness;
         branches.push_back(branch);
-        std::cout << branch.parent_x << ", " << branch.parent_y << ", " << branch.parent_z << ", "
-            << branch.child_x << ", " << branch.child_y << ", " << branch.child_z << ", "
-            << branch.thickness << std::endl;
-    }
-}
-
-void displayData(const std::vector<Branch>& branches) {
-    std::cout << "Branches:" << std::endl;
-    for (const auto& branch : branches) {
-        std::cout << branch.parent_x << ", " << branch.parent_y << ", " << branch.parent_z << ", "
-                  << branch.child_x << ", " << branch.child_y << ", " << branch.child_z << ", "
-                  << branch.thickness << std::endl;
     }
 }
 
@@ -74,14 +70,13 @@ float posY = 0.0f;
 float posZ = 0.0f;
 bool dragging = false;
 double lastMouseX = 0.0, lastMouseY = 0.0;
-std::vector<Node> nodes;
-CSR csr;
+
 std::vector<Branch> branches;
 
 // Mouse callback to update rotation angles
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     static bool ctrlPressed = false; // Track Ctrl key state
-    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS|| 
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || 
         glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
         ctrlPressed = true;
     } else {
@@ -210,36 +205,72 @@ void drawGroundPlane() {
     glEnd();
 }
 
-
 void drawCylinder(float x1, float y1, float z1, float x2, float y2, float z2, float radius) {
     GLUquadric* quad = gluNewQuadric();
     gluQuadricDrawStyle(quad, GLU_FILL);
+    // Draw the cylinder
+    glPushMatrix();
+    glTranslatef(x1, y1, z1);
+    // Calculate the direction vector
+    float dirX = x2 - x1;
+    float dirY = y2 - y1;
+    float dirZ = z2 - z1;
 
-    // Calculate the cylinder's height
-    float height = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) * (z2 - z1));
+    // Calculate the length of the cylinder
+    float length = sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+
+    // Normalize the direction vector
+    float dirLength = sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+    dirX /= dirLength;
+    dirY /= dirLength;
+    dirZ /= dirLength;
+
+    // Calculate the angle and axis for rotation
+    float angleX = atan2(dirY, dirZ) * 180.0 / M_PI;
+    float angleY = atan2(dirX, sqrt(dirY * dirY + dirZ *dirZ)) * 180.0 / M_PI;
+    glRotatef(-angleX, 1.0f, 0.0f, 0.0f);
+    glRotatef(angleY, 0.0f, 1.0f, 0.0f);
+
 
     // Set the color to brown
     glColor3f(0.4f, 0.1f, 0.1f);
 
-    // Draw the cylinder
-    glPushMatrix();
-    glTranslatef(x1, y1, z1);
-    gluQuadricOrientation(quad, GLU_OUTSIDE);
-    gluCylinder(quad, radius, radius, height, 20, 20);
+
+
+    gluCylinder(quad, radius, radius, length, 20, 20);
     glPopMatrix();
 
     gluDeleteQuadric(quad);
 }
 
+//check tracability to root. If not, not draw. This calc. is 54%CPU on jetson.
 void drawTree(const std::vector<Branch>& branches) {
+    if (branches.empty()) return;
+
+    std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> parentChildMap = createParentChildMap(branches);
+
+    std::tuple<float, float, float> root(branches[0].parent_x, branches[0].parent_y, branches[0].parent_z);
+
     for (const auto& branch : branches) {
-        drawCylinder(branch.parent_x, branch.parent_y, branch.parent_z,
-                     branch.child_x, branch.child_y, branch.child_z,
-                     0.01);
+        std::tuple<float, float, float> child(branch.child_x, branch.child_y, branch.child_z);
+        if (canTraceBackToRoot(parentChildMap, child, root)) {
+            drawCylinder(branch.parent_x, branch.parent_y, branch.parent_z,
+                         branch.child_x, branch.child_y, branch.child_z,
+                         branch.thickness * 0.01);
+        }
     }
 }
 
-int main() {
+
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <file_number>" << std::endl;
+        return -1;
+    }
+
+    int file_number = std::stoi(argv[1]);
+    std::string filename = "tree" + std::to_string(file_number) + ".csv";
+
     // Initialize GLFW
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -262,7 +293,7 @@ int main() {
     glfwSetKeyCallback(window, key_callback);
 
     // Load the tree data
-    readCSV("sca_tree.csv", branches);
+    readCSV(filename, branches);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
@@ -287,7 +318,7 @@ int main() {
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
-        gluLookAt(3.0 * zoom + posX + 2, 6.0 * zoom, 3.0 * zoom + posZ +5, posX, 3.0, posZ, 0.0, 1.0, 0.0);
+        gluLookAt(3.0 * zoom + posX + 2, 6.0 * zoom, 3.0 * zoom + posZ +2, posX, 0, posZ, 0.0, 1.0, 0.0);
 
         glRotatef(rotationX, 1.0f, 0.0f, 0.0f);
         glRotatef(rotationY, 0.0f, 1.0f, 0.0f);
@@ -298,6 +329,7 @@ int main() {
         // Draw the ground plane
         drawGroundPlane();
 
+        // Draw the tree
         drawTree(branches);
 
         // Swap front and back buffers

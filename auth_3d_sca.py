@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import csv
-
+import os
 class Tree_node:
     def __init__(self, pos_x, pos_y, pos_z):
         self.x = pos_x
@@ -87,7 +87,7 @@ class Simulation:
             attraction_pts.append(Attraction_point(i, j, k))
 
         self.nodes = []
-        root = Tree_node(0, 2, 0)
+        root = Tree_node(0, 0, 0)
         self.nodes.append(root)
 
         self.closest_node = {attr_pt: None for attr_pt in attraction_pts}
@@ -187,7 +187,12 @@ class Simulation:
             print(f'Parent: {parent.pos}, Child: {child.pos}, Thickness: {thickness}')
 
 
-    def save_transition_map_with_thickness_to_csv(self, filename='transition_map_with_thickness.csv'):
+    def save_transition_map_with_thickness_to_csv(self, base_filename='tree'):
+        # Find the next available filename
+        i = 1
+        while os.path.exists(f'{base_filename}{i}.csv'):
+            i += 1
+        filename = f'{base_filename}{i}.csv'
         with open(filename, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(['Parent_x', 'Parent_y', 'Parent_z', 'Child_x', 'Child_y', 'Child_z', 'Thickness'])
@@ -273,9 +278,9 @@ class Simulation:
 
 
 def run_experiment_ellipsoid_crown_1():
-    mean = [0.3, 5.5, 0.3]
+    mean = [0.3, 1.5, 0.3]
     cov = [[1, 0, 0], [0.6, 2, 0], [0, 0, 1]]
-    x, y, z = np.random.multivariate_normal(mean, cov, 100).T
+    x, y, z = np.random.multivariate_normal(mean, cov, 1000).T
 
     t = np.square(x) + np.square(y - 4) / 4 + np.square(z) <= 1
     x_crown = x[t]
