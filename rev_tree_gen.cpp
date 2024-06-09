@@ -9,6 +9,8 @@
 #include <string>
 #include <map>
 #include <tuple>
+#include <utility> 
+
 
 // Structure to hold the branch information
 struct Branch {
@@ -70,6 +72,7 @@ float posY = 0.0f;
 float posZ = 0.0f;
 bool dragging = false;
 double lastMouseX = 0.0, lastMouseY = 0.0;
+bool drawLeaves = true; 
 
 std::vector<Branch> branches;
 
@@ -151,6 +154,9 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+    if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
+        drawLeaves = !drawLeaves;  // Toggle the drawLeaves variable
     }
 
     const float moveSpeed = 0.1f;
@@ -243,6 +249,82 @@ void drawCylinder(float x1, float y1, float z1, float x2, float y2, float z2, fl
     gluDeleteQuadric(quad);
 }
 
+void drawEllipse(float majorAxis, float minorAxis) {
+    const int numSegments = 36; // Number of segments to approximate ellipse
+    const float angleIncrement = 2.0f * M_PI / numSegments; // Angle increment for each segment
+    glBegin(GL_TRIANGLE_FAN);
+    
+
+    for (int i = 0; i <= numSegments; ++i) {
+        float angle = i * angleIncrement;
+        float x = majorAxis * cos(angle);
+        float y = minorAxis * sin(angle);
+        glVertex3f(x, y, 0.0f); // Draw a vertex at the calculated point
+    }
+    glEnd();
+}
+
+// Function to find the thickness of the parent branch
+std::pair<bool, float> findParentThickness(const std::vector<Branch>& branches, float parent_x, float parent_y, float parent_z) {
+    for (const auto& branch : branches) {
+        if (branch.child_x == parent_x && branch.child_y == parent_y && branch.child_z == parent_z) {
+            return {true, branch.thickness};
+        }
+    }
+    return {false, 0.0f}; // Return false if the parent thickness is not found
+}
+
+
+void drawLeaf(const Branch& branch, const std::vector<Branch>& branches) {
+    glPushMatrix();
+
+    // Calculate direction
+    float dirX = branch.child_x - branch.parent_x;
+    float dirY = branch.child_y - branch.parent_y;
+    float dirZ = branch.child_z - branch.parent_z;
+    float length = sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+
+    // Normalize direction
+    dirX /= length;
+    dirY /= length;
+    dirZ /= length;
+
+    // Calculate angles
+    float angleX = atan2(dirY, dirZ) * 180.0f / M_PI;
+    float angleY = atan2(dirX, sqrt(dirY * dirY + dirZ * dirZ)) * 180.0f / M_PI;
+
+    // Move to the starting point
+    glTranslatef(branch.parent_x, branch.parent_y, branch.parent_z);
+
+    // Draw stem
+    float stemLength = length * 0.2f;
+    drawCylinder(0, 0, 0, dirX * 0.2f, dirY * 0.2f, dirZ * 0.2f, 0.005f);
+
+    // Move to the end of the stem
+    glTranslatef(dirX * 0.2f, dirY * 0.2f, dirZ * 0.2f);
+
+    // Find parent thickness
+    auto parent_thickness = findParentThickness(branches, branch.parent_x, branch.parent_y, branch.parent_z);
+    if (parent_thickness.first) {
+        float offset = parent_thickness.second * 0.01f; // Adjust leaf position by parent thickness
+        glTranslatef(offset * dirX, offset * dirY, offset * dirZ); // Apply offset
+    }
+
+    // Calculate the angle and axis for rotation
+    glRotatef(-angleX, 1.0f, 0.0f, 0.0f);
+    glRotatef(angleY, 0.0f, 1.0f, 0.0f);
+    glRotatef(90, 0, 1, 0);
+
+    // Draw leaf
+    glColor3f(0.1f, 1.0f, 0.1f);
+    float leafLength = length * 0.8f;
+    drawEllipse(leafLength, leafLength * 0.5f);
+
+    glPopMatrix();
+}
+
+
+
 //check tracability to root. If not, not draw. This calc. is 54%CPU on jetson.
 void drawTree(const std::vector<Branch>& branches) {
     if (branches.empty()) return;
@@ -254,13 +336,18 @@ void drawTree(const std::vector<Branch>& branches) {
     for (const auto& branch : branches) {
         std::tuple<float, float, float> child(branch.child_x, branch.child_y, branch.child_z);
         if (canTraceBackToRoot(parentChildMap, child, root)) {
-            drawCylinder(branch.parent_x, branch.parent_y, branch.parent_z,
-                         branch.child_x, branch.child_y, branch.child_z,
-                         branch.thickness * 0.01);
+            if (branch.thickness == -1 && drawLeaves) {  // Check drawLeaves before drawing leaves
+                drawLeaf(branch, branches);
+            } else if (branch.thickness != -1) {
+                drawCylinder(branch.parent_x, branch.parent_y, branch.parent_z,
+                             branch.child_x, branch.child_y, branch.child_z,
+                             branch.thickness * 0.01);
+            }
         }
     }
 }
 
+//TODO: implement shadow rendering!!
 
 int main(int argc, char** argv) {
     if (argc < 2) {

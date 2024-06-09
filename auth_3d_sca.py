@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import csv
 import os
+import random
 class Tree_node:
     def __init__(self, pos_x, pos_y, pos_z):
         self.x = pos_x
@@ -193,6 +194,9 @@ class Simulation:
         while os.path.exists(f'{base_filename}{i}.csv'):
             i += 1
         filename = f'{base_filename}{i}.csv'
+        # Print the filename
+        print()
+        print(f'Saving transition map to {filename}')
         with open(filename, mode='w', newline='') as file:
             writer = csv.writer(file)
             writer.writerow(['Parent_x', 'Parent_y', 'Parent_z', 'Child_x', 'Child_y', 'Child_z', 'Thickness'])
@@ -204,6 +208,27 @@ class Simulation:
                     f'{child.pos[0]:.8f}', f'{child.pos[1]:.8f}', f'{child.pos[2]:.8f}', 
                     f'{thickness:.8f}'
                 ])
+            
+            # Add leaves
+            self.add_leaves_to_csv(writer)
+
+    def add_leaves_to_csv(self, writer, num_leaves=100):
+        leaves_added = 0
+        while leaves_added < num_leaves:
+            node = random.choice(self.nodes)
+            # Check if the node is within the specified y-range
+            if 0.5 <= node.y <= 3.5 and node != self.nodes[0]:  # Avoid the root node
+                # Create a random leaf direction and length
+                direction = np.random.normal(size=3)
+                direction = direction / np.linalg.norm(direction) * 0.1
+                leaf_end = node.pos + direction
+
+                writer.writerow([
+                    f'{node.pos[0]:.8f}', f'{node.pos[1]:.8f}', f'{node.pos[2]:.8f}', 
+                    f'{leaf_end[0]:.8f}', f'{leaf_end[1]:.8f}', f'{leaf_end[2]:.8f}', 
+                    f'-1'
+                ])
+                leaves_added += 1
 
     # Modify the run method to include these print statements at the end
     def run(self, num_iteration):
@@ -282,7 +307,7 @@ def run_experiment_ellipsoid_crown_1():
     cov = [[1, 0, 0], [0.6, 2, 0], [0, 0, 1]]
     x, y, z = np.random.multivariate_normal(mean, cov, 1000).T
 
-    t = np.square(x) + np.square(y - 4) / 4 + np.square(z) <= 1
+    t = np.square(x) + np.square(y - 1.5) / 1.5 + np.square(z) <= 1
     x_crown = x[t]
     y_crown = y[t]
     z_crown = z[t]
