@@ -299,10 +299,10 @@ void drawLeaf(const Branch& branch, const std::vector<Branch>& branches) {
 
     // Draw stem
     float stemLength = length * 0.2f;
-    drawCylinder(0, 0, 0, dirX * 0.2f, dirY * 0.2f, dirZ * 0.2f, 0.005f);
+    drawCylinder(0, 0, 0, dirX * 0.1f, dirY * 0.1f, dirZ * 0.1f, 0.005f);
 
     // Move to the end of the stem
-    glTranslatef(dirX * 0.2f, dirY * 0.2f, dirZ * 0.2f);
+    glTranslatef(dirX * 0.1f, dirY * 0.1f, dirZ * 0.1f);
 
     // Find parent thickness
     auto parent_thickness = findParentThickness(branches, branch.parent_x, branch.parent_y, branch.parent_z);
@@ -350,6 +350,88 @@ void drawTree(const std::vector<Branch>& branches) {
 
 //TODO: implement shadow rendering!!
 
+
+// Modify the readCSV function to clear and update the branches vector
+void updateTree(const std::string& filename, std::vector<Branch>& branches) {
+    std::vector<Branch> newBranches;
+    readCSV(filename, newBranches);
+    branches = std::move(newBranches);
+}
+void renderSceneFromMainView(GLFWwindow* window) {
+    glfwMakeContextCurrent(window);
+
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+
+    // Set up viewport and projection
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glViewport(0, 0, width, height);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0, (double)width / (double)height, 0.1, 100.0);
+
+    // Render here
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Set up camera
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(3.0 * zoom + posX + 2, 6.0 * zoom, 3.0 * zoom + posZ + 2, posX, 0, posZ, 0.0, 1.0, 0.0);
+
+    glRotatef(rotationX, 1.0f, 0.0f, 0.0f);
+    glRotatef(rotationY, 0.0f, 1.0f, 0.0f);
+
+    // Draw XYZ axes
+    drawAxes();
+
+    // Draw the ground plane
+    drawGroundPlane();
+
+    // Draw the tree
+    drawTree(branches);
+
+    // Swap front and back buffers
+    glfwSwapBuffers(window);
+}
+
+void renderSceneFromSecondaryView(GLFWwindow* window) {
+    glfwMakeContextCurrent(window);
+
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+
+    // Set up viewport and projection
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glViewport(0, 0, width, height);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0, (double)width / (double)height, 0.1, 100.0);
+
+    // Render here
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Set up camera at (5, 0, 0) looking at the origin (0, 0, 0)
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(0.0, 5.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0);
+
+    // Draw XYZ axes
+    drawAxes();
+
+    // Draw the ground plane
+    drawGroundPlane();
+
+    // Draw the tree
+    drawTree(branches);
+
+    // Swap front and back buffers
+    glfwSwapBuffers(window);
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <file_number>" << std::endl;
@@ -366,21 +448,55 @@ int main(int argc, char** argv) {
     }
 
     // Create a windowed mode window and its OpenGL context
-    GLFWwindow* window = glfwCreateWindow(800, 600, "OpenGL Window", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(800, 600, "Tree viewer", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
+    // Set the position of the first window
+    glfwSetWindowPos(window, 100, 100);
+
+
+        // Create the second window
+    GLFWwindow* window2 = glfwCreateWindow(800, 600, "Top View", NULL, NULL);
+    if (!window2) {
+        std::cerr << "Failed to create second GLFW window" << std::endl;
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return -1;
+    }
+
+    // Set the position of the second window
+    glfwSetWindowPos(window2, 920, 100);
+        
 
     // Make the window's context current
+    glfwMakeContextCurrent(window2);
+    if (glewInit() != GLEW_OK) {
+        std::cerr << "Failed to initialize GLEW" << std::endl;
+        glfwDestroyWindow(window);
+        glfwDestroyWindow(window2);
+        glfwTerminate();
+        return -1;
+    }
     glfwMakeContextCurrent(window);
+    if (glewInit() != GLEW_OK) {
+        std::cerr << "Failed to initialize GLEW" << std::endl;
+        glfwDestroyWindow(window);
+        glfwDestroyWindow(window2);
+        glfwTerminate();
+        return -1;
+    }
+
+
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetKeyCallback(window, key_callback);
+    glfwSetKeyCallback(window2, key_callback);
 
-    // Load the tree data
+    // Load the initial tree data
     readCSV(filename, branches);
 
     // Enable depth test
@@ -398,37 +514,34 @@ int main(int argc, char** argv) {
     // Enable vsync
     glfwSwapInterval(1);
 
-    // Loop until the user closes the window
-    while (!glfwWindowShouldClose(window)) {
-        // Render here
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        // Set up camera
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
+// Variable to keep track of the last update time
+double lastUpdateTime = glfwGetTime();
 
-        gluLookAt(3.0 * zoom + posX + 2, 6.0 * zoom, 3.0 * zoom + posZ +2, posX, 0, posZ, 0.0, 1.0, 0.0);
-
-        glRotatef(rotationX, 1.0f, 0.0f, 0.0f);
-        glRotatef(rotationY, 0.0f, 1.0f, 0.0f);
-
-        // Draw XYZ axes
-        drawAxes();
-
-        // Draw the ground plane
-        drawGroundPlane();
-
-        // Draw the tree
-        drawTree(branches);
-
-        // Swap front and back buffers
-        glfwSwapBuffers(window);
-
-        // Poll for and process events
-        glfwPollEvents();
+// Main loop
+while (!glfwWindowShouldClose(window) && !glfwWindowShouldClose(window2)) {
+    // Check if one second has passed
+    double currentTime = glfwGetTime();
+    if (currentTime - lastUpdateTime >= 1.0) {
+        // Update the tree data
+        updateTree(filename, branches);
+        lastUpdateTime = currentTime;
     }
+    // Render scene from secondary view
+    renderSceneFromSecondaryView(window2);
 
-    // Terminate GLFW
-    glfwTerminate();
+    // Render scene from main view
+    renderSceneFromMainView(window);
 
-    return 0;
+
+
+    // Poll for and process events
+    glfwPollEvents();
+}
+
+// Cleanup and terminate GLFW
+glfwDestroyWindow(window2);
+glfwDestroyWindow(window);
+glfwTerminate();
+
+return 0;
 }

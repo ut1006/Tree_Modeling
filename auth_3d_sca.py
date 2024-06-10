@@ -212,7 +212,7 @@ class Simulation:
             # Add leaves
             self.add_leaves_to_csv(writer)
 
-    def add_leaves_to_csv(self, writer, num_leaves=100):
+    def add_leaves_to_csv(self, writer, num_leaves=300):
         leaves_added = 0
         while leaves_added < num_leaves:
             node = random.choice(self.nodes)
