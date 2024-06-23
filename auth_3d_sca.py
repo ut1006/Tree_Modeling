@@ -4,6 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import csv
 import os
 import random
+import pandas as pd
 class Tree_node:
     def __init__(self, pos_x, pos_y, pos_z):
         self.x = pos_x
@@ -187,48 +188,94 @@ class Simulation:
             thickness = self.branch_thickness(child)
             print(f'Parent: {parent.pos}, Child: {child.pos}, Thickness: {thickness}')
 
-
     def save_transition_map_with_thickness_to_csv(self, base_filename='tree'):
         # Find the next available filename
         i = 1
         while os.path.exists(f'{base_filename}{i}.csv'):
             i += 1
         filename = f'{base_filename}{i}.csv'
+        
         # Print the filename
-        print()
         print(f'Saving transition map to {filename}')
-        with open(filename, mode='w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow(['Parent_x', 'Parent_y', 'Parent_z', 'Child_x', 'Child_y', 'Child_z', 'Thickness'])
+        
+        # Create DataFrame to store data
+        data = []
+        for child, parent in self.branching_tree.transition_map.items():
+            thickness = self.branch_thickness(child)
+            data.append([
+                parent.pos[0], parent.pos[1], parent.pos[2], 
+                child.pos[0], child.pos[1], child.pos[2], 
+                thickness
+            ])
+        
+        # Add leaves
+        data += self.generate_leaf_data(num_leaves=300)
+        
+        # Convert data to DataFrame
+        df = pd.DataFrame(data, columns=['Parent_x', 'Parent_y', 'Parent_z', 'Child_x', 'Child_y', 'Child_z', 'Thickness'])
+        
+        # Drop duplicates
+        df.drop_duplicates(inplace=True)
+        
+        # Save DataFrame to CSV
+        df.to_csv(filename, index=False, float_format='%.6f')
 
-            for child, parent in self.branching_tree.transition_map.items():
-                thickness = self.branch_thickness(child)
-                writer.writerow([
-                    f'{parent.pos[0]:.8f}', f'{parent.pos[1]:.8f}', f'{parent.pos[2]:.8f}', 
-                    f'{child.pos[0]:.8f}', f'{child.pos[1]:.8f}', f'{child.pos[2]:.8f}', 
-                    f'{thickness:.8f}'
-                ])
-            
-            # Add leaves
-            self.add_leaves_to_csv(writer)
-
-    def add_leaves_to_csv(self, writer, num_leaves=300):
-        leaves_added = 0
-        while leaves_added < num_leaves:
+    def generate_leaf_data(self, num_leaves):
+        leaf_data = []
+        while len(leaf_data) < num_leaves:
             node = random.choice(self.nodes)
-            # Check if the node is within the specified y-range
-            if 0.5 <= node.y <= 3.5 and node != self.nodes[0]:  # Avoid the root node
-                # Create a random leaf direction and length
+            if 0.5 <= node.y <= 3.5 and node != self.nodes[0]:  
                 direction = np.random.normal(size=3)
                 direction = direction / np.linalg.norm(direction) * 0.1
                 leaf_end = node.pos + direction
-
-                writer.writerow([
-                    f'{node.pos[0]:.8f}', f'{node.pos[1]:.8f}', f'{node.pos[2]:.8f}', 
-                    f'{leaf_end[0]:.8f}', f'{leaf_end[1]:.8f}', f'{leaf_end[2]:.8f}', 
-                    f'-1'
+                leaf_data.append([
+                    node.pos[0], node.pos[1], node.pos[2], 
+                    leaf_end[0], leaf_end[1], leaf_end[2], 
+                    -1
                 ])
-                leaves_added += 1
+        return leaf_data
+    # def save_transition_map_with_thickness_to_csv(self, base_filename='tree'):
+    #     # Find the next available filename
+    #     i = 1
+    #     while os.path.exists(f'{base_filename}{i}.csv'):
+    #         i += 1
+    #     filename = f'{base_filename}{i}.csv'
+    #     # Print the filename
+    #     print()
+    #     print(f'Saving transition map to {filename}')
+    #     with open(filename, mode='w', newline='') as file:
+    #         writer = csv.writer(file)
+    #         writer.writerow(['Parent_x', 'Parent_y', 'Parent_z', 'Child_x', 'Child_y', 'Child_z', 'Thickness'])
+
+    #         for child, parent in self.branching_tree.transition_map.items():
+    #             thickness = self.branch_thickness(child)
+    #             writer.writerow([
+    #                 f'{parent.pos[0]:.6f}', f'{parent.pos[1]:.6f}', f'{parent.pos[2]:.6f}', 
+    #                 f'{child.pos[0]:.6f}', f'{child.pos[1]:.6f}', f'{child.pos[2]:.6f}', 
+    #                 f'{thickness:.6f}'
+    #             ])
+            
+    #         # Add leaves
+    #         self.add_leaves_to_csv(writer)
+ 
+
+    # def add_leaves_to_csv(self, writer, num_leaves=300):
+    #     leaves_added = 0
+    #     while leaves_added < num_leaves:
+    #         node = random.choice(self.nodes)
+    #         # Check if the node is within the specified y-range
+    #         if 0.5 <= node.y <= 3.5 and node != self.nodes[0]:  # Avoid the root node
+    #             # Create a random leaf direction and length
+    #             direction = np.random.normal(size=3)
+    #             direction = direction / np.linalg.norm(direction) * 0.1
+    #             leaf_end = node.pos + direction
+
+    #             writer.writerow([
+    #                 f'{node.pos[0]:.6f}', f'{node.pos[1]:.6f}', f'{node.pos[2]:.6f}', 
+    #                 f'{leaf_end[0]:.6f}', f'{leaf_end[1]:.6f}', f'{leaf_end[2]:.6f}', 
+    #                 f'-1'
+    #             ])
+    #             leaves_added += 1
 
     # Modify the run method to include these print statements at the end
     def run(self, num_iteration):
