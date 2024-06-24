@@ -13,7 +13,12 @@
 #include <chrono>
 #include <map>
 #include <set>
-//g++ -o desktop_gen rev_tree_gen.cpp -lglfw -lGL -lGLU -lGLEW
+#include <random> 
+#include <algorithm>
+#include <iomanip> 
+#include <unordered_set>
+#include <unordered_map>
+//g++ -o desktop_gen search_Pruning_Branch.cpp -lglfw -lGL -lGLU -lGLEW
 
 // Structure to hold the branch information
 struct Branch {
@@ -22,6 +27,7 @@ struct Branch {
     float thickness;
 };
 
+std::vector<Branch> branches;
 // Global variable for branch points
 std::set<std::tuple<float, float, float>> branchPoints;
 
@@ -50,6 +56,7 @@ std::set<std::tuple<float, float, float>> findBranchPoints(const std::vector<Bra
 }
 
 
+
 // Function to create a parent-child map
 std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> createParentChildMap(const std::vector<Branch>& branches) {
     std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> parentChildMap;
@@ -73,6 +80,22 @@ bool canTraceBackToRoot(const std::map<std::tuple<float, float, float>, std::tup
     return true;
 }
 
+// Function to create a map of branch points and their adjacent branch points
+std::map<std::tuple<float, float, float>, std::set<std::tuple<float, float, float>>> createBranchPointsMap(const std::vector<Branch>& branches, const std::set<std::tuple<float, float, float>>& branchPoints) {
+    std::map<std::tuple<float, float, float>, std::set<std::tuple<float, float, float>>> branchPointsMap;
+
+    // Iterate through the branches
+    for (const auto& branch : branches) {
+        // Check if both parent and child are branch points
+        if (branchPoints.count(std::make_tuple(branch.parent_x, branch.parent_y, branch.parent_z)) &&
+            branchPoints.count(std::make_tuple(branch.child_x, branch.child_y, branch.child_z))) {
+            // Add the child to the parent's set of adjacent branch points
+            branchPointsMap[std::make_tuple(branch.parent_x, branch.parent_y, branch.parent_z)].insert(std::make_tuple(branch.child_x, branch.child_y, branch.child_z));
+        }
+    }
+
+    return branchPointsMap;
+}
 
 // Function to read the CSV file
 void readCSV(const std::string& filename, std::vector<Branch>& branches) {
@@ -105,7 +128,7 @@ bool dragging = false;
 double lastMouseX = 0.0, lastMouseY = 0.0;
 bool drawLeaves = true; 
 
-std::vector<Branch> branches;
+
 
 // Mouse callback to update rotation angles
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
@@ -388,12 +411,47 @@ void drawBranchPoints(const std::set<std::tuple<float, float, float>>& branchPoi
     glEnd();
 }
 
+// Function to remove branches with a specific parent from the branches vector
+void removeBranchesWithParent(float parent_x, float parent_y, float parent_z, std::vector<Branch>& branches) {
+    auto it = std::remove_if(branches.begin(), branches.end(), [&](const Branch& branch) {
+        return branch.parent_x == parent_x && branch.parent_y == parent_y && branch.parent_z == parent_z;
+    });
+
+    branches.erase(it, branches.end());
+}
+
+
+
+std::vector<std::tuple<float, float, float>> findTerminalBranchPoints(const std::map<std::tuple<float, float, float>, std::set<std::tuple<float, float, float>>>& branchPointsMap) {
+    std::vector<std::tuple<float, float, float>> terminalBranchPoints;
+    for (const auto& entry : branchPointsMap) {
+        // Check if the parent has no other children
+        if (entry.second.size() == 1 && branchPointsMap.find(*entry.second.begin()) == branchPointsMap.end()) {
+            terminalBranchPoints.push_back(entry.first);
+        }
+    }
+    return terminalBranchPoints;
+}
+
 // Modify the readCSV function to clear and update the branches vector
 void updateTree(const std::string& filename, std::vector<Branch>& branches) {
     std::vector<Branch> newBranches;
     readCSV(filename, newBranches);
     branches = std::move(newBranches);
+
+
+    // Create the branch points map
+    std::map<std::tuple<float, float, float>, std::set<std::tuple<float, float, float>>> branchPointsMap = createBranchPointsMap(branches, branchPoints);
+
+    // Find all terminal branch points
+    std::vector<std::tuple<float, float, float>> terminalBranchPoints = findTerminalBranchPoints(branchPointsMap);
+    // Choose the first terminal branch point to remove its branches with parents
+    if (!terminalBranchPoints.empty()) {
+        auto branchPointToRemove = terminalBranchPoints[0]; // Choose the first terminal branch point
+        removeBranchesWithParent(std::get<0>(branchPointToRemove), std::get<1>(branchPointToRemove), std::get<2>(branchPointToRemove), branches);
+    }
 }
+
 void renderSceneFromMainView(GLFWwindow* window) {
     glfwMakeContextCurrent(window);
 
@@ -567,13 +625,29 @@ int main(int argc, char** argv) {
     readCSV(filename, branches);
 
     // Find the branch points
-    std::set<std::tuple<float, float, float>> branchPoints = findBranchPoints(branches);
-
-    // Output the branch points
+    branchPoints = findBranchPoints(branches);
     std::cout << "Branch Points:\n";
     for (const auto& point : branchPoints) {
-        std::cout << std::get<0>(point) << ", " << std::get<1>(point) << ", " << std::get<2>(point) << std::endl;
+        std::cout << std::fixed << std::setprecision(6) << std::get<0>(point) << ", " 
+                << std::get<1>(point) << ", " << std::get<2>(point) << std::endl;
     }
+
+
+
+    // Print branches with branch points as parents
+    std::cout << "Branches with branch points as parents:\n";
+    for (const auto& branch : branches) {
+        std::tuple<float, float, float> parent(branch.parent_x, branch.parent_y, branch.parent_z);
+        if (branchPoints.find(parent) != branchPoints.end()) {
+            std::cout << "Parent: " << std::get<0>(parent) << ", " << std::get<1>(parent) << ", " << std::get<2>(parent) << " | "
+                    << "Child: " << branch.child_x << ", " << branch.child_y << ", " << branch.child_z << " | "
+                    << "Thickness: " << branch.thickness << std::endl;
+        }
+    }
+
+
+
+
 
 
     // Enable depth test
