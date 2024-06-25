@@ -93,7 +93,6 @@ void drawEllipse(float majorAxis, float minorAxis) {
     glEnd();
 }
 
-// Function to find the thickness of the parent branch
 std::pair<bool, float> findParentThickness(const std::vector<Branch>& branches, float parent_x, float parent_y, float parent_z) {
     for (const auto& branch : branches) {
         if (branch.child_x == parent_x && branch.child_y == parent_y && branch.child_z == parent_z) {
@@ -102,7 +101,6 @@ std::pair<bool, float> findParentThickness(const std::vector<Branch>& branches, 
     }
     return {false, 0.0f}; // Return false if the parent thickness is not found
 }
-
 
 void drawLeaf(const Branch& branch, const std::vector<Branch>& branches) {
     glPushMatrix();
@@ -152,11 +150,11 @@ void drawLeaf(const Branch& branch, const std::vector<Branch>& branches) {
     glPopMatrix();
 }
 
-bool canTraceBackToRoot(const std::map<std::tuple<float, float, float>, std::tuple<float, float, float>>& parentChildMap, const std::tuple<float, float, float>& current, const std::tuple<float, float, float>& root) {
+bool canTraceBackToRoot(const std::map<std::tuple<float, float, float>, std::tuple<float, float, float>>& parentChildMap1, const std::tuple<float, float, float>& current, const std::tuple<float, float, float>& root) {
     auto it = current;
     while (it != root) {
-        auto parentIt = parentChildMap.find(it);
-        if (parentIt == parentChildMap.end()) {
+        auto parentIt = parentChildMap1.find(it);
+        if (parentIt == parentChildMap1.end()) {
             return false;
         }
         it = parentIt->second;
@@ -169,7 +167,7 @@ bool canTraceBackToRoot(const std::map<std::tuple<float, float, float>, std::tup
 void drawTree(const std::vector<Branch>& branches) {
     if (branches.empty()) return;
 
-    parentChildMap = createParentChildMap(branches);
+    std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> parentChildMap = createParentChildMap(branches);
     BranchMap = createBranchMap(branches);
 
 

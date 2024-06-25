@@ -111,10 +111,20 @@ int main(int argc, char** argv) {
     glfwSwapInterval(1);
 
 
+    // Variable to keep track of the last update time
+    double lastUpdateTime = glfwGetTime();
 
 // Main loop
 while (!glfwWindowShouldClose(window) && !glfwWindowShouldClose(window2)) {
 
+    // Check if one second has passed
+    double currentTime = glfwGetTime();
+    if (currentTime - lastUpdateTime >= 1.0) {
+        // Update the tree data
+        updateTree(filename, branches);
+        lastUpdateTime = currentTime;
+    }
+    
     // Render scene from secondary view
     renderSceneFromSecondaryView(window2);
 

@@ -16,7 +16,6 @@ extern std::vector<Branch> branches;
 extern std::set<std::tuple<float, float, float>> branchPoints;
 extern std::set<std::tuple<float, float, float>> terminalBranchPoints;
 extern std::set<std::tuple<float, float, float>> terminalPoints;
-extern std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> parentChildMap;
 extern std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> BranchMap;
 
 #endif

@@ -50,6 +50,10 @@ std::set<std::tuple<float, float, float>> findBranchPoints(const std::vector<Bra
 }
 
 std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> createParentChildMap(const std::vector<Branch>& branches) {
+  
+    // You should consider initializing the variables before using in local! 
+    std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> parentChildMap;
+    // Without this line, new PC-map are added into existing map rather overwriting.   
 
     for (const auto& branch : branches) {
         std::tuple<float, float, float> parent(branch.parent_x, branch.parent_y, branch.parent_z);

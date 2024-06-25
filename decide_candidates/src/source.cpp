@@ -52,11 +52,9 @@ void renderSceneFromMainView(GLFWwindow* window) {
 }
 
 void updateTree(const std::string& filename, std::vector<Branch>& branches) {
-    readCSV(filename, branches);
-    branchPoints = findBranchPoints(branches);
-    parentChildMap = createParentChildMap(branches);
-    BranchMap = createBranchMap(branches);
-    terminalBranchPoints = findTerminalBranchPoints(BranchMap);
+    std::vector<Branch> newBranches;
+    readCSV(filename, newBranches);
+    branches = std::move(newBranches);
 }
 
 void calculateAndPrintGreenPercentage(GLFWwindow* window) {
