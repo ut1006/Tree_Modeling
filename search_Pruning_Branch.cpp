@@ -18,7 +18,7 @@
 #include <iomanip> 
 #include <unordered_set>
 #include <unordered_map>
-#include <iomanip> 
+
 //g++ -o desktop_gen search_Pruning_Branch.cpp -lglfw -lGL -lGLU -lGLEW
 
 // Structure to hold the branch information

@@ -1,0 +1,3 @@
+/home/kamadagpu/cpp_project/decide_candidates/build/CMakeFiles/search_candidates.dir
+/home/kamadagpu/cpp_project/decide_candidates/build/CMakeFiles/edit_cache.dir
+/home/kamadagpu/cpp_project/decide_candidates/build/CMakeFiles/rebuild_cache.dir
