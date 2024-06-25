@@ -710,11 +710,6 @@ int main(int argc, char** argv) {
     }
 
 
-
-
-
-
-
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
@@ -735,6 +730,7 @@ int main(int argc, char** argv) {
 // Main loop
 while (!glfwWindowShouldClose(window) && !glfwWindowShouldClose(window2)) {
 
+    updateTree(filename, branches);
     // Render scene from secondary view
     renderSceneFromSecondaryView(window2);
 
