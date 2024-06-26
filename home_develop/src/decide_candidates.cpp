@@ -8,23 +8,30 @@
 #include <algorithm> 
 
 std::map<std::tuple<float, float, float>, std::tuple<float, float, float>>  decidedBranches;
+std::vector<float> results;
 
-//print green
-void printgreen(){
-std::cout << greenPercentage;
+// Check if a branch is in decidedBranches
+bool isBranchDecided(const Branch& branch) {
+    std::tuple<float, float, float> parent(branch.parent_x, branch.parent_y, branch.parent_z);
+    std::tuple<float, float, float> child(branch.child_x, branch.child_y, branch.child_z);
+    return decidedBranches.find(child) != decidedBranches.end() && decidedBranches[child] == parent;
 }
 
-//try removing terminalBranches from branches. trial_index operates this. 
+//try removing terminalBranches from branches based on Greedy Algorithm
 void trial_prune() {
+
+    //init the branch
+    branches=initialBranches; 
+
     // Check if trial_index is within the bounds of terminalBranches
     if (trial_index >= terminalBranches.size()) {
         decided_num++;
+        trial_index = 0;
+
         return;
     }
+    std::cout << trial_index <<std::endl;
 
-    // Convert terminalBranches to a vector for indexed access
-    std::vector<std::pair<std::tuple<float, float, float>, std::tuple<float, float, float>>> terminalBranchVec(terminalBranches.begin(), terminalBranches.end());
-    
     // Get the parent and child coordinates for the specified trial_index
     auto trial_branch = terminalBranchVec[trial_index];
     auto trial_parent = trial_branch.second;
@@ -33,9 +40,10 @@ void trial_prune() {
     // Remove the branch from branches
     branches.erase(std::remove_if(branches.begin(), branches.end(), [&](const Branch& branch) {
         return (std::make_tuple(branch.parent_x, branch.parent_y, branch.parent_z) == trial_parent &&
-                std::make_tuple(branch.child_x, branch.child_y, branch.child_z) == trial_child);
+                std::make_tuple(branch.child_x, branch.child_y, branch.child_z) == trial_child) ||
+               isBranchDecided(branch);
     }), branches.end());
-
+    
     // Also prune the branches from decidedBranches
     for (const auto& decided_branch : decidedBranches) {
         auto decided_parent = decided_branch.second;
@@ -46,11 +54,81 @@ void trial_prune() {
                     std::make_tuple(branch.child_x, branch.child_y, branch.child_z) == decided_child);
         }), branches.end());
     }
+
+    trial_index++;
+
 }
+
+//calculate 3d variance of the tree. But variance(y) may be preferable.
+float calculateScatter(const std::set<std::tuple<float, float, float>>& terminalPoints) {
+    // Center of Points
+    float centerX = 0.0f, centerY = 0.0f, centerZ = 0.0f;
+    for (const auto& point : terminalPoints) {
+        centerX += std::get<0>(point);
+        centerY += std::get<1>(point);
+        centerZ += std::get<2>(point);
+    }
+    int numPoints = terminalPoints.size();
+    centerX /= numPoints;
+    centerY /= numPoints;
+    centerZ /= numPoints;
+
+    // Calculate square-mean from cernter of points
+    float sumOfSquaredDistances = 0.0f;
+    for (const auto& point : terminalPoints) {
+        float dx = std::get<0>(point) - centerX;
+        float dy = std::get<1>(point) - centerY;
+        float dz = std::get<2>(point) - centerZ;
+        sumOfSquaredDistances += dx * dx + dy * dy + dz * dz;
+    }
+
+    // calculate scatter
+    float scatter = sumOfSquaredDistances / numPoints;
+    return scatter;
+}
+
+// Return score of the tree from sunlight and variance. 
+float objective_function(float greenPercentage, std::set<std::tuple<float, float, float>> terminalPoints){
+
+    float score = 0;
+    float scatter = calculateScatter(terminalPoints);
+    int numBranch = terminalPoints.size();
+    if (scatter > initialScatter*0.6){
+        score = greenPercentage;
+    }
+    return score;
+}
+
+
+
 //collect green% and calc value of obj function, then decide which to prune.  
-void collect_results(){
+void aggregate_results(){
+    std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> branchMap = createBranchMap(branches);
+    std::set<std::tuple<float, float, float>> terminalPoints1 = findTerminalBranchPoints(BranchMap, false);
+    float score = objective_function(greenPercentage, terminalPoints1);
+    results.push_back(score);
 
+    if(trial_index == 0 && results.size() != 0){
+        std::cout << "start deciding" << std::endl;
 
+        // Find the index of the maximum value in results vector
+        auto maxElementIter = std::max_element(results.begin(), results.end());
+        int maxIndex = std::distance(results.begin(), maxElementIter);
+
+        std::cout << "max value: " << results[maxIndex] << " Index of the highest score: " << maxIndex << std::endl;
+
+        // Retrieve the decided branch from terminalBranches using maxIndex
+        auto decidedBranch = terminalBranchVec[maxIndex];
+        
+        // Insert the decided branch into decidedBranches
+        decidedBranches[decidedBranch.first] = decidedBranch.second;
+
+        terminalBranchVec.erase(terminalBranchVec.begin() + maxIndex);
+
+        std::cout << "Decided Branch:" << std::endl;
+        for (const auto& pair : decidedBranches) {
+            std::cout << " Parent: (" << std::get<0>(pair.second) << ", " << std::get<1>(pair.second) << ", " << std::get<2>(pair.second) << ")" ;
+            std::cout << "Child: (" << std::get<0>(pair.first) << ", " << std::get<1>(pair.first) << ", " << std::get<2>(pair.first) << ")"<< std::endl; 
+        }
+    }
 }
-
-

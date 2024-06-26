@@ -1,6 +1,7 @@
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+#include <string>
 
 // Define global variables
 extern float posX;
@@ -16,4 +17,7 @@ extern double lastMouseY;
 extern float greenPercentage;
 extern int trial_index;
 extern int decided_num;
+extern std::string filename;
+extern float initialScatter;
+
 #endif

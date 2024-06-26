@@ -10,6 +10,7 @@
 #include <iomanip> 
 
 std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> terminalBranches;
+std::vector<std::pair<std::tuple<float, float, float>, std::tuple<float, float, float>>> terminalBranchVec;
 
 
 void readCSV(const std::string& filename, std::vector<Branch>& branches) {
@@ -68,6 +69,7 @@ std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> creat
     return parentChildMap;
 }
 
+//Create map without leaves
 std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> createBranchMap(const std::vector<Branch>& branches) {
 
     for (const auto& branch : branches) {
@@ -81,7 +83,7 @@ std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> creat
     return BranchMap;
 }
 
-std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::map<std::tuple<float, float, float>, std::tuple<float, float, float>>& BranchMap) {
+std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::map<std::tuple<float, float, float>, std::tuple<float, float, float>>& BranchMap, bool ifprint) {
     std::map<std::tuple<float, float, float>, int> pointCount;
     std::set<std::tuple<float, float, float>> terminalBranchPoints;
 
@@ -99,19 +101,22 @@ std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::ma
             terminalPoints.insert(pair.first);
         }
     }
-    std::cout << "terminalPoints:"<<std::endl;
-    for (const auto& point : terminalPoints) {
-        std::cout << std::fixed << std::setprecision(6) << std::get<0>(point) << ", " << std::get<1>(point) << ", " << std::get<2>(point) << std::endl;
+    if(ifprint){
+        std::cout << "terminalPoints:"<<std::endl;
+        for (const auto& point : terminalPoints) {
+            std::cout << std::fixed << std::setprecision(6) << std::get<0>(point) << ", " << std::get<1>(point) << ", " << std::get<2>(point) << std::endl;
+        }
     }
-
     // Trace back from each terminal point to find terminal branching points
     for (const auto& terminal : terminalPoints) {
         auto current = terminal;
         std::tuple<float, float, float> previous = std::make_tuple(0.0f, 0.0f, 0.0f);
 
         while (true) {
-            std::cout << ".";
-            std::cout << "(" << std::get<0>(current) << ", " << std::get<1>(current) << ", " << std::get<2>(current) << ")";
+            if(ifprint){
+                std::cout << ".";
+                std::cout << "(" << std::get<0>(current) << ", " << std::get<1>(current) << ", " << std::get<2>(current) << ")";
+            }
 
             auto parentIt = BranchMap.find(current);
             if (parentIt == BranchMap.end()) {
@@ -119,27 +124,33 @@ std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::ma
             }
             previous = current;
             current = parentIt->second; // Trace back to the root
-            std::cout << "(" << std::get<0>(current) << ", " << std::get<1>(current) << ", " << std::get<2>(current) << ")";
+            if(ifprint){std::cout << "(" << std::get<0>(current) << ", " << std::get<1>(current) << ", " << std::get<2>(current) << ")";}
             if (branchPoints.find(current) != branchPoints.end()) {
+                
                 terminalBranchPoints.insert(current);
                 terminalBranches[previous] = current;
-                std::cout << "1" << std::endl;
+                
+                if(ifprint){std::cout << "1" << std::endl;}
                 break;
             }
         }
     }
 
-    std::cout << "Terminal Branch Points:" << std::endl;
-    for (const auto& point : terminalBranchPoints) {
-        std::cout << "(" << std::get<0>(point) << ", " << std::get<1>(point) << ", " << std::get<2>(point) << ")" << std::endl;
-    }
+
+    // Convert terminalBranches to a vector for indexed access
+    terminalBranchVec.assign(terminalBranches.begin(), terminalBranches.end());
+    
+    if(ifprint){
+        std::cout << "Terminal Branch Points:" << std::endl;
+        for (const auto& point : terminalBranchPoints) {
+            std::cout << "(" << std::get<0>(point) << ", " << std::get<1>(point) << ", " << std::get<2>(point) << ")" << std::endl;
+        }
 
     std::cout << "Terminal Branch Pairs:" << std::endl;
     for (const auto& pair : terminalBranches) {
         std::cout << " Parent: (" << std::get<0>(pair.second) << ", " << std::get<1>(pair.second) << ", " << std::get<2>(pair.second) << ")" ;
-        std::cout << "Child: (" << std::get<0>(pair.first) << ", " << std::get<1>(pair.first) << ", " << std::get<2>(pair.first) << ")"<< std::endl;
-        
+        std::cout << "Child: (" << std::get<0>(pair.first) << ", " << std::get<1>(pair.first) << ", " << std::get<2>(pair.first) << ")"<< std::endl;  
     }
-
+    }
     return terminalBranchPoints;
 }

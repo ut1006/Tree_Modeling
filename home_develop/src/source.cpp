@@ -80,7 +80,7 @@ void calculateAndPrintGreenPercentage(GLFWwindow* window) {
     }
 
     greenPercentage = (float)greenPixels / totalPixels * 100.0f;
-    printf("\r\033[KGreen Ratio: %.2f%%   ", greenPercentage); 
+    printf("Green Ratio: %.2f%%   ", greenPercentage); 
     fflush(stdout); 
 
     delete[] pixels;

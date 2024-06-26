@@ -9,13 +9,14 @@
 #include <iostream>
 #include <iomanip> 
 std::vector<Branch> branches;
+std::vector<Branch> initialBranches;
 std::set<std::tuple<float, float, float>> branchPoints;
 std::set<std::tuple<float, float, float>> terminalBranchPoints;
 std::set<std::tuple<float, float, float>> terminalPoints;
 std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> parentChildMap;
 std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> BranchMap;
-
-
+std::string filename;
+float initialScatter;
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -24,7 +25,7 @@ int main(int argc, char** argv) {
     }
 
     int file_number = std::stoi(argv[1]);
-    std::string filename = "tree" + std::to_string(file_number) + ".csv";
+    filename = "tree" + std::to_string(file_number) + ".csv";
 
     // Initialize GLFW
     if (!glfwInit()) {
@@ -83,11 +84,12 @@ int main(int argc, char** argv) {
     // Load the initial tree data
     readCSV(filename, branches);
 
+    initialBranches = branches;
     parentChildMap = createParentChildMap(branches);
     BranchMap = createBranchMap(branches);
     branchPoints = findBranchPoints(branches);
-    terminalBranchPoints = findTerminalBranchPoints(BranchMap);
-
+    terminalBranchPoints = findTerminalBranchPoints(BranchMap, true);
+    initialScatter = calculateScatter(terminalPoints);
     // Find the branch points
 
     std::cout << "Branching Points:\n";
@@ -117,21 +119,18 @@ int main(int argc, char** argv) {
     double lastUpdateTime = glfwGetTime();
 
 // Main loop
-int trial_index = 0;
-int decided_num = 0;
-
 while (!glfwWindowShouldClose(window) && !glfwWindowShouldClose(window2)) {
 
-    // Check if one second has passed
-    double currentTime = glfwGetTime();
-    if (currentTime - lastUpdateTime >= 1.0) {
-        // Update the tree data
-        updateTree(filename, branches);
-        lastUpdateTime = currentTime;
-    }
+    // // Check if one second has passed
+    // double currentTime = glfwGetTime();
+    // if (currentTime - lastUpdateTime >= 1.0) {
+    //     // Update the tree data
+    //     updateTree(filename, branches);
+    //     lastUpdateTime = currentTime;
+    // }
     
     trial_prune();
-
+   
     // Render scene from secondary view
     renderSceneFromSecondaryView(window2);
 
@@ -139,11 +138,12 @@ while (!glfwWindowShouldClose(window) && !glfwWindowShouldClose(window2)) {
     renderSceneFromMainView(window);
 
     //collect result here
+    aggregate_results();
 
     // Poll for and process events
     glfwPollEvents();
     
-    trial_index++;
+    
 }
 
 // Cleanup and terminate GLFW
