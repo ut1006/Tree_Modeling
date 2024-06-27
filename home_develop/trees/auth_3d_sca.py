@@ -209,7 +209,7 @@ class Simulation:
             ])
         
         # Add leaves
-        data += self.generate_leaf_data(num_leaves=300)
+        data += self.generate_leaf_data(num_leaves=500)
         
         # Convert data to DataFrame
         df = pd.DataFrame(data, columns=['Parent_x', 'Parent_y', 'Parent_z', 'Child_x', 'Child_y', 'Child_z', 'Thickness'])

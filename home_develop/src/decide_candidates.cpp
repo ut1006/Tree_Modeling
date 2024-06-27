@@ -17,20 +17,37 @@ bool isBranchDecided(const Branch& branch) {
     return decidedBranches.find(child) != decidedBranches.end() && decidedBranches[child] == parent;
 }
 
+// Function to print the terminal branch vector
+void printTerminalBranchVec(const std::vector<std::pair<std::tuple<float, float, float>, std::tuple<float, float, float>>>& vec) {
+    std::cout << "Terminal Branch Vector:" << std::endl;
+    for (size_t i = 0; i < vec.size(); ++i) {
+        auto parent = vec[i].first;
+        auto child = vec[i].second;
+        std::cout << "Index " << i << ": Parent(" << std::get<0>(parent) << ", " << std::get<1>(parent) << ", " << std::get<2>(parent)
+                  << ") -> Child(" << std::get<0>(child) << ", " << std::get<1>(child) << ", " << std::get<2>(child) << ")" << std::endl;
+    }
+}
 //try removing terminalBranches from branches based on Greedy Algorithm
 void trial_prune() {
+    
 
+    std::set<std::tuple<float, float, float>> terminalPoints = findTerminalBranchPoints(BranchMap, false, false);
     //init the branch
     branches=initialBranches; 
 
     // Check if trial_index is within the bounds of terminalBranches
-    if (trial_index >= terminalBranches.size()) {
+    if (trial_index >= terminalBranchVec.size()) {
         decided_num++;
         trial_index = 0;
-
+        std::cout << "end ";
         return;
     }
-    std::cout << trial_index <<std::endl;
+    std::cout << trial_index ;
+
+    // Print the terminalBranchVec content
+    if (trial_index == 0) {
+        printTerminalBranchVec(terminalBranchVec);
+    }
 
     // Get the parent and child coordinates for the specified trial_index
     auto trial_branch = terminalBranchVec[trial_index];
@@ -54,7 +71,7 @@ void trial_prune() {
                     std::make_tuple(branch.child_x, branch.child_y, branch.child_z) == decided_child);
         }), branches.end());
     }
-
+    BranchMap = createBranchMap(branches);
     trial_index++;
 
 }
@@ -103,20 +120,23 @@ float objective_function(float greenPercentage, std::set<std::tuple<float, float
 
 //collect green% and calc value of obj function, then decide which to prune.  
 void aggregate_results(){
-    std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> branchMap = createBranchMap(branches);
-    std::set<std::tuple<float, float, float>> terminalPoints1 = findTerminalBranchPoints(BranchMap, false);
-    float score = objective_function(greenPercentage, terminalPoints1);
+   
+    float score = objective_function(greenPercentage, terminalPoints);
+    
     results.push_back(score);
 
     if(trial_index == 0 && results.size() != 0){
+        results.pop_back();
         std::cout << "start deciding" << std::endl;
 
         // Find the index of the maximum value in results vector
         auto maxElementIter = std::max_element(results.begin(), results.end());
         int maxIndex = std::distance(results.begin(), maxElementIter);
 
-        std::cout << "max value: " << results[maxIndex] << " Index of the highest score: " << maxIndex << std::endl;
+        // for(auto result : results){std::cout << result <<std::endl;}
 
+        std::cout << "max value: " << results[maxIndex] << " Index of the highest score: " << maxIndex << std::endl;
+        std::cout << "num of results: "<<results.size() <<std::endl;
         // Retrieve the decided branch from terminalBranches using maxIndex
         auto decidedBranch = terminalBranchVec[maxIndex];
         
@@ -130,5 +150,7 @@ void aggregate_results(){
             std::cout << " Parent: (" << std::get<0>(pair.second) << ", " << std::get<1>(pair.second) << ", " << std::get<2>(pair.second) << ")" ;
             std::cout << "Child: (" << std::get<0>(pair.first) << ", " << std::get<1>(pair.first) << ", " << std::get<2>(pair.first) << ")"<< std::endl; 
         }
+        results.clear();
+        terminalBranches.clear();
     }
 }

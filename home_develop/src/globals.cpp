@@ -9,4 +9,5 @@ bool dragging = false;
 double lastMouseX = 0.0, lastMouseY = 0.0;
 int trial_index = 0;
 int decided_num = 0;
+bool isPaused = false;
 

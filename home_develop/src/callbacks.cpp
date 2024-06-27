@@ -3,6 +3,7 @@
 #include "include/globals.h"
 #include <cmath>
 
+
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     static bool ctrlPressed = false; // Track Ctrl key state
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || 
@@ -94,5 +95,8 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
     }
     if (key == GLFW_KEY_RIGHT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         posX += moveSpeed;
+    }
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        isPaused = !isPaused; 
     }
 }

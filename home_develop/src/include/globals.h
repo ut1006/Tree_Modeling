@@ -19,5 +19,5 @@ extern int trial_index;
 extern int decided_num;
 extern std::string filename;
 extern float initialScatter;
-
+extern bool isPaused;
 #endif

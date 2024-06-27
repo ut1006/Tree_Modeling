@@ -6,6 +6,7 @@
 #include "include/globals.h"
 #include <GL/glu.h>
 #include <GLFW/glfw3.h>
+#include <iostream>
 
 float greenPercentage;
 
@@ -81,6 +82,7 @@ void calculateAndPrintGreenPercentage(GLFWwindow* window) {
 
     greenPercentage = (float)greenPixels / totalPixels * 100.0f;
     printf("Green Ratio: %.2f%%   ", greenPercentage); 
+    std::cout<< std::endl;
     fflush(stdout); 
 
     delete[] pixels;

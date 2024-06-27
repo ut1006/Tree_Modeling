@@ -1,0 +1,37 @@
+[
+{
+  "directory": "/home/kamada/work/Tree_Modeling/home_develop/build",
+  "command": "/usr/bin/c++ -g -o CMakeFiles/search_candidates.dir/src/main.cpp.o -c /home/kamada/work/Tree_Modeling/home_develop/src/main.cpp",
+  "file": "/home/kamada/work/Tree_Modeling/home_develop/src/main.cpp"
+},
+{
+  "directory": "/home/kamada/work/Tree_Modeling/home_develop/build",
+  "command": "/usr/bin/c++ -g -o CMakeFiles/search_candidates.dir/src/source.cpp.o -c /home/kamada/work/Tree_Modeling/home_develop/src/source.cpp",
+  "file": "/home/kamada/work/Tree_Modeling/home_develop/src/source.cpp"
+},
+{
+  "directory": "/home/kamada/work/Tree_Modeling/home_develop/build",
+  "command": "/usr/bin/c++ -g -o CMakeFiles/search_candidates.dir/src/callbacks.cpp.o -c /home/kamada/work/Tree_Modeling/home_develop/src/callbacks.cpp",
+  "file": "/home/kamada/work/Tree_Modeling/home_develop/src/callbacks.cpp"
+},
+{
+  "directory": "/home/kamada/work/Tree_Modeling/home_develop/build",
+  "command": "/usr/bin/c++ -g -o CMakeFiles/search_candidates.dir/src/draw.cpp.o -c /home/kamada/work/Tree_Modeling/home_develop/src/draw.cpp",
+  "file": "/home/kamada/work/Tree_Modeling/home_develop/src/draw.cpp"
+},
+{
+  "directory": "/home/kamada/work/Tree_Modeling/home_develop/build",
+  "command": "/usr/bin/c++ -g -o CMakeFiles/search_candidates.dir/src/branches.cpp.o -c /home/kamada/work/Tree_Modeling/home_develop/src/branches.cpp",
+  "file": "/home/kamada/work/Tree_Modeling/home_develop/src/branches.cpp"
+},
+{
+  "directory": "/home/kamada/work/Tree_Modeling/home_develop/build",
+  "command": "/usr/bin/c++ -g -o CMakeFiles/search_candidates.dir/src/globals.cpp.o -c /home/kamada/work/Tree_Modeling/home_develop/src/globals.cpp",
+  "file": "/home/kamada/work/Tree_Modeling/home_develop/src/globals.cpp"
+},
+{
+  "directory": "/home/kamada/work/Tree_Modeling/home_develop/build",
+  "command": "/usr/bin/c++ -g -o CMakeFiles/search_candidates.dir/src/decide_candidates.cpp.o -c /home/kamada/work/Tree_Modeling/home_develop/src/decide_candidates.cpp",
+  "file": "/home/kamada/work/Tree_Modeling/home_develop/src/decide_candidates.cpp"
+}
+]

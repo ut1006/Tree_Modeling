@@ -71,7 +71,7 @@ std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> creat
 
 //Create map without leaves
 std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> createBranchMap(const std::vector<Branch>& branches) {
-
+    std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> BranchMap;
     for (const auto& branch : branches) {
         if (branch.thickness != -1) {
             std::tuple<float, float, float> parent(branch.parent_x, branch.parent_y, branch.parent_z);
@@ -83,7 +83,7 @@ std::map<std::tuple<float, float, float>, std::tuple<float, float, float>> creat
     return BranchMap;
 }
 
-std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::map<std::tuple<float, float, float>, std::tuple<float, float, float>>& BranchMap, bool ifprint) {
+std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::map<std::tuple<float, float, float>, std::tuple<float, float, float>>& BranchMap, bool ifprint, bool ifupdate) {
     std::map<std::tuple<float, float, float>, int> pointCount;
     std::set<std::tuple<float, float, float>> terminalBranchPoints;
 
@@ -102,7 +102,7 @@ std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::ma
         }
     }
     if(ifprint){
-        std::cout << "terminalPoints:"<<std::endl;
+        std::cout << "terminalPoints:"<<std::endl;                     
         for (const auto& point : terminalPoints) {
             std::cout << std::fixed << std::setprecision(6) << std::get<0>(point) << ", " << std::get<1>(point) << ", " << std::get<2>(point) << std::endl;
         }
@@ -113,10 +113,10 @@ std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::ma
         std::tuple<float, float, float> previous = std::make_tuple(0.0f, 0.0f, 0.0f);
 
         while (true) {
-            if(ifprint){
-                std::cout << ".";
-                std::cout << "(" << std::get<0>(current) << ", " << std::get<1>(current) << ", " << std::get<2>(current) << ")";
-            }
+            // if(ifprint){
+            //     std::cout << ".";
+            //     std::cout << "(" << std::get<0>(current) << ", " << std::get<1>(current) << ", " << std::get<2>(current) << ")";
+            // }
 
             auto parentIt = BranchMap.find(current);
             if (parentIt == BranchMap.end()) {
@@ -124,23 +124,24 @@ std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::ma
             }
             previous = current;
             current = parentIt->second; // Trace back to the root
-            if(ifprint){std::cout << "(" << std::get<0>(current) << ", " << std::get<1>(current) << ", " << std::get<2>(current) << ")";}
+            // if(ifprint){std::cout << "(" << std::get<0>(current) << ", " << std::get<1>(current) << ", " << std::get<2>(current) << ")";}
             if (branchPoints.find(current) != branchPoints.end()) {
                 
                 terminalBranchPoints.insert(current);
                 terminalBranches[previous] = current;
                 
-                if(ifprint){std::cout << "1" << std::endl;}
+                // if(ifprint){std::cout << "1" << std::endl;}
                 break;
             }
         }
     }
 
-
+    if(ifupdate){
     // Convert terminalBranches to a vector for indexed access
     terminalBranchVec.assign(terminalBranches.begin(), terminalBranches.end());
+    }
     
-    if(ifprint){
+    if(trial_index==0){
         std::cout << "Terminal Branch Points:" << std::endl;
         for (const auto& point : terminalBranchPoints) {
             std::cout << "(" << std::get<0>(point) << ", " << std::get<1>(point) << ", " << std::get<2>(point) << ")" << std::endl;

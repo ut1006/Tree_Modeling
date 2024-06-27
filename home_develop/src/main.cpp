@@ -8,6 +8,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <iomanip> 
+#include <thread>
 std::vector<Branch> branches;
 std::vector<Branch> initialBranches;
 std::set<std::tuple<float, float, float>> branchPoints;
@@ -88,7 +89,7 @@ int main(int argc, char** argv) {
     parentChildMap = createParentChildMap(branches);
     BranchMap = createBranchMap(branches);
     branchPoints = findBranchPoints(branches);
-    terminalBranchPoints = findTerminalBranchPoints(BranchMap, true);
+    terminalBranchPoints = findTerminalBranchPoints(BranchMap, true, true);
     initialScatter = calculateScatter(terminalPoints);
     // Find the branch points
 
@@ -128,21 +129,34 @@ while (!glfwWindowShouldClose(window) && !glfwWindowShouldClose(window2)) {
     //     updateTree(filename, branches);
     //     lastUpdateTime = currentTime;
     // }
-    
-    trial_prune();
-   
-    // Render scene from secondary view
-    renderSceneFromSecondaryView(window2);
+    if(terminalBranchVec.size()==0){
+        std::cout<<"end of trial."<<std::endl;
+        break;
+        }
 
+    if (!isPaused) {
+        trial_prune();
+    
+        // Render scene from secondary view
+        renderSceneFromSecondaryView(window2);
+
+
+
+        //collect result here
+        aggregate_results();
+        if (trial_index == 0) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    } 
     // Render scene from main view and calc green%. 
     renderSceneFromMainView(window);
 
-    //collect result here
-    aggregate_results();
+    if(isPaused) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100)); // 一時停止中は100ミリ秒待機
+    }
 
     // Poll for and process events
     glfwPollEvents();
-    
     
 }
 
