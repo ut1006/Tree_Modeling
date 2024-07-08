@@ -144,9 +144,10 @@ while (!glfwWindowShouldClose(window) && !glfwWindowShouldClose(window2)) {
 
         //collect result here
         aggregate_results();
-        if (trial_index == 0) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
+
+        // if (trial_index == 0) {
+        //     std::this_thread::sleep_for(std::chrono::seconds(1));
+        // }
     } 
     // Render scene from main view and calc green%. 
     renderSceneFromMainView(window);

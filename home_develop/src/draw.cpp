@@ -194,18 +194,18 @@ void drawBranchPoints(const std::set<std::tuple<float, float, float>>& branchPoi
     glColor3f(1.0f, 0.0f, 0.0f); // Red color for branch points
     glPointSize(10.0f); // Set point size larger
     glBegin(GL_POINTS);
-    for (const auto& point : branchPoints) {
-        glVertex3f(std::get<0>(point), std::get<1>(point), std::get<2>(point));
-    }
+    // for (const auto& point : branchPoints) {
+    //     glVertex3f(std::get<0>(point), std::get<1>(point), std::get<2>(point));
+    // }
     glEnd();
 }
 void drawTerminalBranchPoints(const std::set<std::tuple<float, float, float>>& terminalBranchPoints) {
     glColor3f(0.0f, 0.0f, 1.0f); // Red color for branch points
     glPointSize(15.0f); // Set point size larger
     glBegin(GL_POINTS);
-    for (const auto& point : terminalBranchPoints) {
-        glVertex3f(std::get<0>(point), std::get<1>(point), std::get<2>(point));
-    }
+    // for (const auto& point : terminalBranchPoints) {
+    //     glVertex3f(std::get<0>(point), std::get<1>(point), std::get<2>(point));
+    // }
     glEnd();
 }
 
@@ -214,8 +214,8 @@ void drawTerminalPoints(const std::set <std::tuple<float, float, float>>& termin
     glColor3f(1.0f, 1.0f, 1.0f); // Red color for branch points
     glPointSize(10.0f); // Set point size larger
     glBegin(GL_POINTS);
-    for (const auto& point : terminalPoints) {
-        glVertex3f(std::get<0>(point), std::get<1>(point), std::get<2>(point));
-    }
+    // for (const auto& point : terminalPoints) {
+    //     glVertex3f(std::get<0>(point), std::get<1>(point), std::get<2>(point));
+    // }
     glEnd();
 }

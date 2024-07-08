@@ -7,8 +7,11 @@
 #include <GL/glu.h>
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <cmath>
 
 float greenPercentage;
+
+#include <cmath>
 
 void renderSceneFromMainView(GLFWwindow* window) {
     glfwMakeContextCurrent(window);
@@ -31,7 +34,28 @@ void renderSceneFromMainView(GLFWwindow* window) {
     // Set up camera
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(3.0 * zoom + posX + 2, 6.0 * zoom, 3.0 * zoom + posZ + 2, posX, 0, posZ, 0.0, 1.0, 0.0);
+    
+    // Parameters for the orbiting camera
+    static float angle = 0.0f;
+    const float radius = 2.0f;
+    const float cameraHeight = 5.5f;
+    const float speed = 0.05f; // Rotation speed
+
+    // Calculate camera position
+    float camX = radius * cos(angle);
+    float camZ = radius * sin(angle);
+    float camY = cameraHeight;
+
+    // Update the angle for the next frame
+    angle += speed;
+
+    // Make sure angle stays within 0 to 2*PI
+    if (angle > 2 * M_PI) {
+        angle -= 2 * M_PI;
+    }
+
+    // Set the camera to look at the origin (0, 0, 0)
+    gluLookAt(camX, camY, camZ, 0.0, 0.0, 0.0, 0.0, 3.0, 0.0);
 
     glRotatef(rotationX, 1.0f, 0.0f, 0.0f);
     glRotatef(rotationY, 0.0f, 1.0f, 0.0f);
@@ -46,9 +70,9 @@ void renderSceneFromMainView(GLFWwindow* window) {
     drawTree(branches);
 
     // Draw branch points
-    drawBranchPoints(branchPoints);    
+    drawBranchPoints(branchPoints);
 
-    drawTerminalBranchPoints(terminalBranchPoints) ;
+    drawTerminalBranchPoints(terminalBranchPoints);
 
     drawTerminalPoints(terminalPoints);
 
@@ -81,7 +105,7 @@ void calculateAndPrintGreenPercentage(GLFWwindow* window) {
     }
 
     greenPercentage = (float)greenPixels / totalPixels * 100.0f;
-    printf("Green Ratio: %.2f%%   ", greenPercentage); 
+    printf(" Green Ratio: %.2f%%   ", greenPercentage); 
     std::cout<< std::endl;
     fflush(stdout); 
 

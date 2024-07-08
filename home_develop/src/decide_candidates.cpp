@@ -19,13 +19,13 @@ bool isBranchDecided(const Branch& branch) {
 
 // Function to print the terminal branch vector
 void printTerminalBranchVec(const std::vector<std::pair<std::tuple<float, float, float>, std::tuple<float, float, float>>>& vec) {
-    std::cout << "Terminal Branch Vector:" << std::endl;
-    for (size_t i = 0; i < vec.size(); ++i) {
-        auto parent = vec[i].first;
-        auto child = vec[i].second;
-        std::cout << "Index " << i << ": Parent(" << std::get<0>(parent) << ", " << std::get<1>(parent) << ", " << std::get<2>(parent)
-                  << ") -> Child(" << std::get<0>(child) << ", " << std::get<1>(child) << ", " << std::get<2>(child) << ")" << std::endl;
-    }
+    // std::cout << "Terminal Branch Vector:" << std::endl;
+    // for (size_t i = 0; i < vec.size(); ++i) {
+    //     auto parent = vec[i].first;
+    //     auto child = vec[i].second;
+    //     std::cout << "Index " << i << ": Parent(" << std::get<0>(parent) << ", " << std::get<1>(parent) << ", " << std::get<2>(parent)
+    //               << ") -> Child(" << std::get<0>(child) << ", " << std::get<1>(child) << ", " << std::get<2>(child) << ")" << std::endl;
+    // }
 }
 //try removing terminalBranches from branches based on Greedy Algorithm
 void trial_prune() {

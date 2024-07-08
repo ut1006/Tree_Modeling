@@ -141,17 +141,17 @@ std::set<std::tuple<float, float, float>> findTerminalBranchPoints(const std::ma
     terminalBranchVec.assign(terminalBranches.begin(), terminalBranches.end());
     }
     
-    if(trial_index==0){
-        std::cout << "Terminal Branch Points:" << std::endl;
-        for (const auto& point : terminalBranchPoints) {
-            std::cout << "(" << std::get<0>(point) << ", " << std::get<1>(point) << ", " << std::get<2>(point) << ")" << std::endl;
-        }
+    // if(trial_index==0){
+    //     std::cout << "Terminal Branch Points:" << std::endl;
+    //     for (const auto& point : terminalBranchPoints) {
+    //         std::cout << "(" << std::get<0>(point) << ", " << std::get<1>(point) << ", " << std::get<2>(point) << ")" << std::endl;
+    //     }
 
-    std::cout << "Terminal Branch Pairs:" << std::endl;
-    for (const auto& pair : terminalBranches) {
-        std::cout << " Parent: (" << std::get<0>(pair.second) << ", " << std::get<1>(pair.second) << ", " << std::get<2>(pair.second) << ")" ;
-        std::cout << "Child: (" << std::get<0>(pair.first) << ", " << std::get<1>(pair.first) << ", " << std::get<2>(pair.first) << ")"<< std::endl;  
-    }
-    }
+    // std::cout << "Terminal Branch Pairs:" << std::endl;
+    // for (const auto& pair : terminalBranches) {
+    //     std::cout << " Parent: (" << std::get<0>(pair.second) << ", " << std::get<1>(pair.second) << ", " << std::get<2>(pair.second) << ")" ;
+    //     std::cout << "Child: (" << std::get<0>(pair.first) << ", " << std::get<1>(pair.first) << ", " << std::get<2>(pair.first) << ")"<< std::endl;  
+    // }
+    // }
     return terminalBranchPoints;
 }
